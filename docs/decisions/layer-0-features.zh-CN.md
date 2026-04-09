@@ -155,9 +155,13 @@ status: active
 
 ---
 
-## 域 7：测试基础设施
+## 域 7：测试基础设施（Harness Engineering）
 
-> 确保 Provider 质量的测试支撑。
+> **Harness Engineering**（测试夹具工程）：为 Provider 层构建可复用的测试基础设施。
+> 当存在 4+ 个 Provider 实现时，Harness 确保：
+> - **一次编写，N 次验证** — 契约测试写一套，所有 Provider 跑同一套用例
+> - **快速反馈** — InMemory Provider 让单元测试毫秒级完成，不依赖真实 LLM API
+> - **确定性** — Recording Provider 消除 LLM 非确定性输出对 CI 的影响
 
 | # | 功能 | 优先级 | 复杂度 | SC | 参考 | 说明 |
 |---|------|--------|--------|-----|------|------|

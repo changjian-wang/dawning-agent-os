@@ -1,0 +1,42 @@
+flowchart TB
+    subgraph CREATE["创建阶段"]
+        direction LR
+        C1["IChatClient.AsAIAgent()"]
+        C2["new ChatClientAgent()"]
+        C3["AIAgentBuilder.Build()"]
+    end
+
+    subgraph CTOR["构造函数"]
+        S1["1. 克隆 Options"] --> S2["2. 包装 IChatClient"]
+        S2 --> S3["3. ChatHistoryProvider"]
+        S3 --> S4["4. AIContextProviders"]
+        S4 --> S5["5. 校验 StateKeys"]
+        S5 --> S6["6. 创建 Logger"]
+    end
+
+    subgraph CONFIG["配置 ChatClientAgentOptions"]
+        direction LR
+        O1["Id / Name / Desc"]
+        O2["ChatOptions\nInstructions, Tools\nTemp, MaxTokens"]
+        O3["HistoryProvider\nContextProviders"]
+        O4["UseAsIs\nPerServiceCall"]
+    end
+
+    subgraph RUN["运行阶段"]
+        R0["RunAsync"] --> R1["创建 Session"]
+        R1 --> R2["合并 ChatOptions"]
+        R2 --> R3["加载历史"]
+        R3 --> R4["Providers Invoking"]
+        R4 --> R5["调用 IChatClient"]
+        R5 --> R6["Providers Invoked"]
+        R6 --> R7["更新 ConversationId"]
+    end
+
+    subgraph SESSION["会话管理"]
+        direction LR
+        SS1["Create"]
+        SS2["Serialize"]
+        SS3["Deserialize"]
+    end
+
+    CREATE --> CTOR --> CONFIG --> RUN --> SESSION

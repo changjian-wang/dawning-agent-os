@@ -1,0 +1,11 @@
+flowchart TB
+    A(["GetResponseAsync 异常"]) --> B["NotifyProvidersOfFailure"]
+    B --> C["ChatHistoryProvider\nInvokedAsync(exception)"]
+    C --> D["默认跳过"]
+    B --> E["AIContextProvider ×N"]
+    E --> F["InvokedAsync(exception)"]
+    F --> G["默认跳过"]
+
+    style A fill:#e74c3c,color:#fff
+    style D fill:#95a5a6,color:#fff
+    style G fill:#95a5a6,color:#fff

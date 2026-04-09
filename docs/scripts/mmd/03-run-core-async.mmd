@@ -1,0 +1,25 @@
+flowchart TB
+    START(["RunCoreAsync"])
+
+    START --> PREPARE
+
+    subgraph PREPARE["1. PrepareSession"]
+        P1["合并 ChatOptions"] --> P2["创建/验证 Session"]
+        P2 --> P3["ConversationId 检查"]
+        P3 --> P4["LoadChatHistory"]
+        P4 --> P5["AIContextProviders\nInvoking 管道"]
+    end
+
+    PREPARE --> CTX["2. EnsureRunContext"]
+    CTX --> TRANSFORM["3. ApplyTransformations"]
+    TRANSFORM --> LLM_CALL
+
+    subgraph LLM_CALL["4. GetResponseAsync"]
+        F1["FunctionInvokingChatClient"] --> F2{"tool_calls?"}
+        F2 -->|Yes| F3["执行工具 → 再调 LLM"] --> F2
+        F2 -->|No| F4["ChatResponse"]
+    end
+
+    LLM_CALL --> UPDATE["5. UpdateConversationId"]
+    UPDATE --> NOTIFY["6. NotifyProviders\nInvoked 回调"]
+    NOTIFY --> RETURN(["7. AgentResponse"])

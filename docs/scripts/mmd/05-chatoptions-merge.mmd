@@ -1,0 +1,12 @@
+flowchart LR
+    A["① AgentRunOptions\nResponseFormat\nBackgroundResponses\nAdditionalProperties"]
+    B["② 请求级 ChatOptions"]
+    C["③ Agent 级 ChatOptions"]
+
+    A -->|"最高优先"| MERGE(("合并"))
+    B -->|"中优先"| MERGE
+    C -->|"最低优先"| MERGE
+
+    style A fill:#e74c3c,color:#fff
+    style B fill:#f39c12,color:#fff
+    style C fill:#3498db,color:#fff

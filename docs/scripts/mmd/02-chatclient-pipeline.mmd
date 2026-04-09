@@ -1,0 +1,13 @@
+flowchart TB
+    A["调用方"] --> FIC
+
+    subgraph PIPELINE["IChatClient 中间件管道"]
+        direction TB
+        FIC["FunctionInvokingChatClient\n自动函数调用"]
+        FIC -->|"tool_calls → 执行 → 回传"| PSC
+        PSC["PerServiceCall\nHistoryPersistingClient\n（可选）"]
+        PSC -->|"加载/持久化历史"| LEAF
+        LEAF["原始 IChatClient\nOpenAIChatClient 等"]
+    end
+
+    LEAF --> LLM["LLM 服务"]

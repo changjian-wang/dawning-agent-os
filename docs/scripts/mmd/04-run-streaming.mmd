@@ -1,0 +1,14 @@
+flowchart TB
+    START(["RunCoreStreamingAsync"])
+
+    START --> P["1. PrepareSession\n（同非流式）"]
+    P --> STREAM["2. GetStreamingResponseAsync"]
+
+    STREAM --> LOOP{"hasUpdates?"}
+    LOOP -->|Yes| YIELD["yield AgentResponseUpdate"]
+    YIELD --> RESTORE["EnsureRunContext\n恢复上下文"]
+    RESTORE --> MOVE["MoveNextAsync"] --> LOOP
+
+    LOOP -->|No| COLLECT["4. ToChatResponse()"]
+    COLLECT --> UPDATE["5. UpdateConversationId"]
+    UPDATE --> NOTIFY["6. NotifyProviders"]
