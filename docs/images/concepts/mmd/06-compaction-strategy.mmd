@@ -1,14 +1,14 @@
 flowchart TD
     subgraph compaction["Automatic Compaction"]
-        Before["压缩前\n[system, user1, assistant1, ..., user50, assistant50]\n ↑ 接近上限"]
-        After["压缩后\n[system, 📝摘要, user49, assistant49, user50, assistant50]"]
+        Before["压缩前<br/>[system, user1, assistant1, ..., user50, assistant50]<br/>↑ 接近上限"]
+        After["压缩后<br/>[system, 📝摘要, user49, assistant49, user50, assistant50]"]
         Before -->|"LLM 摘要"| After
     end
 
     subgraph layers["三层策略"]
-        L1["1. Prompt Caching\n不变内容自动缓存"]
-        L2["2. Subagent 隔离\n子任务独立上下文"]
-        L3["3. Automatic Compaction\n兜底压缩"]
+        L1["1. Prompt Caching<br/>不变内容自动缓存"]
+        L2["2. Subagent 隔离<br/>子任务独立上下文"]
+        L3["3. Automatic Compaction<br/>兜底压缩"]
         L1 --> L2 --> L3
     end
 

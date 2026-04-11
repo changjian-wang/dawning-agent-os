@@ -155,6 +155,18 @@ $$composite = w_{semantic} \times similarity + w_{recency} \times decay + w_{imp
 - 多 Agent 通过共享记忆交换知识
 - 分布式场景使用远程存储（Redis / PostgreSQL+pgvector）
 
+#### 向量数据库的已知局限
+
+| 问题 | 描述 | Dawning 应对 |
+|------|------|-------------|
+| 语义相似 ≠ 相关 | "用 PostgreSQL" 和 "用 MySQL" 对 "选了什么数据库" 都高分，无法区分最终决策与被否决方案 | 复合评分（语义 + 时效 + 重要性），而非纯语义匹配 |
+| 无法表达否定和更新 | 存了 "用 PostgreSQL" 后改主意存 "改用 MongoDB"，两条并存，可能返回过时信息 | 矛盾检测 + 版本化（→ [LLM Wiki Lint 机制](llm-wiki-pattern.zh-CN.md)） |
+| 原子事实提取质量依赖 LLM | LLM 可能丢信息、曲解语义、产生幻觉事实 | 可配置提取 prompt + 人工审核钩子 |
+| 检索精度与成本矛盾 | 召回太多浪费 token 且干扰判断，召回太少漏掉关键信息 | `MemoryOptions` 可配置召回数、相似度阈值、去重策略 |
+| 基础设施复杂度 | 向量数据库（Qdrant / Milvus / pgvector）是额外运维负担 | `ILongTermMemory` 接口抽象，简单场景可用内存/文件实现 |
+
+这也是采用双层架构而非纯向量数据库的原因——短期记忆用自动压缩（确定性强、无检索歧义），长期记忆才引入语义检索，且通过复合评分和可配置策略缓解上述问题。
+
 ### 4.3 摘要策略
 
 | 策略 | 做法 | 理由 |

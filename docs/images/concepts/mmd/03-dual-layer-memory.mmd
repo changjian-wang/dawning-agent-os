@@ -1,15 +1,23 @@
 graph TB
-    subgraph WM["短期记忆（Working Memory）<br/>← 自动压缩型（参考 Claude Agent SDK）"]
+    subgraph WM["短期记忆 Working Memory"]
+        W0["自动压缩型<br/>参考 Claude Agent SDK"]
         W1["当前会话的消息列表"]
-        W2["接近上限时自动压缩（类似 GC）"]
+        W2["接近上限时自动压缩<br/>类似 GC"]
+        W0 ~~~ W1
+        W1 --> W2
     end
-    subgraph LM["长期记忆（Long-term Memory）<br/>← 语义记忆型（参考 CrewAI）"]
-        L1["remember() / recall() API"]
+    subgraph LM["长期记忆 Long-term Memory"]
+        L0["语义记忆型<br/>参考 CrewAI"]
+        L1["remember / recall API"]
         L2["向量数据库 + 语义检索"]
         L3["多 Agent 共享 / 分布式存储"]
+        L0 ~~~ L1
+        L1 --> L2 --> L3
     end
 
-    WM -->|会话结束时提取关键事实| LM
+    WM -->|"会话结束时提取关键事实"| LM
 
     style WM fill:#e3f2fd,stroke:#1565c0
     style LM fill:#e8f5e9,stroke:#2e7d32
+    style W0 fill:#bbdefb,stroke:#1565c0,stroke-dasharray: 5 5
+    style L0 fill:#c8e6c9,stroke:#2e7d32,stroke-dasharray: 5 5
