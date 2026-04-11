@@ -5,7 +5,7 @@
 
 ---
 
-## 1. LLM 本质
+## 1. LLM 概述
 
 **Large Language Model** 是一个自回归概率模型：
 

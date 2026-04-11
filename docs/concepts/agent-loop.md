@@ -138,7 +138,7 @@ Attempt 2:
 | MS Agent Framework | ReAct（`ChatCompletionAgent` + Function Calling） | `AgentGroupChat` 多 Agent 协作 |
 | LangGraph | 图驱动（自定义状态机） | 完全可编程：节点 + 边 + 条件路由 |
 | CrewAI | Plan-and-Execute（`Process.sequential` / `Process.hierarchical`） | 内建串行/层级执行模式 |
-| AutoGen | 多 Agent 对话 | Agent 间消息传递驱动循环 |
+| AutoGen | 多 Agent 对话（已被 MS Agent Framework 取代） | Agent 间消息传递驱动循环 |
 
 ---
 

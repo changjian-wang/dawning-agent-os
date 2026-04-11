@@ -95,7 +95,7 @@ for (int step = 0; step < 10; step++)  // 硬编码最大步数
 | **工具系统** | `ITool` + `IToolRegistry`，声明式注册，自动发现 |
 | **可观测性** | OpenTelemetry + ILogger，全链路追踪（跨 Agent、跨机器） |
 | **安全护栏** | MaxSteps, MaxCost, RequiresConfirmation |
-| **双层记忆** | 短期（`IWorkingMemory` + 自动压缩）+ 长期（`ILongTermMemory` + 语义检索） |
+| **双层记忆** | 短期（`IWorkingMemory` + 自动压缩）+ 长期（`ILongTermMemory`，预留接口，待定） |
 | **多 Agent 协作** | `IOrchestrator` 编排 + Handoff 移交 + 共享长期记忆 |
 | **分布式运行** | Agent 可跨进程/机器部署，通过消息传递协作 |
 | **DI 可测试** | 所有依赖通过接口注入，100% 可 Mock |
@@ -129,6 +129,8 @@ for (int step = 0; step < 10; step++)  // 硬编码最大步数
 **竞品参考**：CrewAI（Crew/Task）、MS Agent Framework（Graph Workflows）
 
 ### 3.2 长期记忆
+
+> **状态：设计探索中** — 长期记忆的实现方案仍在评估，向量数据库方案存在已知局限（详见 [concepts/context-management.md](../concepts/context-management.md)）。框架预留 `ILongTermMemory` 接口，待方案成熟后实现。
 
 **解决的问题**：Agent 需要跨会话积累知识，而不是每次从零开始。
 

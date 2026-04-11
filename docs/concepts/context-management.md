@@ -146,26 +146,23 @@ $$composite = w_{semantic} \times similarity + w_{recency} \times decay + w_{imp
 
 ![Compaction 策略](../images/concepts/06-compaction-strategy.png)
 
-### 4.2 长期记忆：Semantic Memory
+### 4.2 长期记忆（设计探索中）
 
-跨会话知识库，基于向量数据库 + 语义检索：
+> **状态：待定** — 长期记忆的实现方案仍在评估中，暂不纳入近期开发计划。以下为当前的分析和思考方向。
 
-- Agent 执行完任务后，框架自动提取关键事实存入向量数据库
-- Agent 执行前，自动检索相关记忆注入 prompt
-- 多 Agent 通过共享记忆交换知识
-- 分布式场景使用远程存储（Redis / PostgreSQL+pgvector）
+跨会话知识库的候选方案是向量数据库 + 语义检索，但存在以下已知局限：
 
-#### 向量数据库的已知局限
+| 问题 | 描述 |
+|------|------|
+| 语义相似 ≠ 相关 | "用 PostgreSQL" 和 "用 MySQL" 对 "选了什么数据库" 都高分，无法区分最终决策与被否决方案 |
+| 无法表达否定和更新 | 存了 "用 PostgreSQL" 后改主意存 "改用 MongoDB"，两条并存，可能返回过时信息 |
+| 原子事实提取质量依赖 LLM | LLM 可能丢信息、曲解语义、产生幻觉事实 |
+| 检索精度与成本矛盾 | 召回太多浪费 token 且干扰判断，召回太少漏掉关键信息 |
+| 基础设施复杂度 | 向量数据库（Qdrant / Milvus / pgvector）是额外运维负担 |
 
-| 问题 | 描述 | Dawning 应对 |
-|------|------|-------------|
-| 语义相似 ≠ 相关 | "用 PostgreSQL" 和 "用 MySQL" 对 "选了什么数据库" 都高分，无法区分最终决策与被否决方案 | 复合评分（语义 + 时效 + 重要性），而非纯语义匹配 |
-| 无法表达否定和更新 | 存了 "用 PostgreSQL" 后改主意存 "改用 MongoDB"，两条并存，可能返回过时信息 | 矛盾检测 + 版本化（→ [LLM Wiki Lint 机制](llm-wiki-pattern.zh-CN.md)） |
-| 原子事实提取质量依赖 LLM | LLM 可能丢信息、曲解语义、产生幻觉事实 | 可配置提取 prompt + 人工审核钩子 |
-| 检索精度与成本矛盾 | 召回太多浪费 token 且干扰判断，召回太少漏掉关键信息 | `MemoryOptions` 可配置召回数、相似度阈值、去重策略 |
-| 基础设施复杂度 | 向量数据库（Qdrant / Milvus / pgvector）是额外运维负担 | `ILongTermMemory` 接口抽象，简单场景可用内存/文件实现 |
+目前业界也没有成熟的通用解决方案（Mem0、OMEGA、Zep 等均处于早期阶段）。长期记忆的核心难点不在存储，而在语义理解——矛盾检测、知识过期、检索精度都需要 LLM 参与推理，如何低成本、高准确率地实现仍是未解难题。
 
-这也是采用双层架构而非纯向量数据库的原因——短期记忆用自动压缩（确定性强、无检索歧义），长期记忆才引入语义检索，且通过复合评分和可配置策略缓解上述问题。
+框架预留 `ILongTermMemory` 接口作为扩展点，待方案成熟后实现。
 
 ### 4.3 摘要策略
 
@@ -175,10 +172,11 @@ $$composite = w_{semantic} \times similarity + w_{recency} \times decay + w_{imp
 | 格式 | 要点列表，不用长段落 | 结构化比语言选择节省更多 token |
 | 标识符 | 保留原始标识符（类名、方法名、路径） | 技术术语不翻译 |
 
-默认压缩指令模板：
+默认压缩指令模板（框架内置于 `DefaultContextCompactor`，开发者可通过 `IContextCompactor` 替换）：
 
 ```
 Summarize the conversation history. Use the following format:
+- Omit off-topic messages unrelated to the ongoing task.
 - Key decisions: [bullet list]
 - Modified files: [file paths]
 - Pending tasks: [bullet list]
@@ -191,11 +189,10 @@ Use the same language as the conversation.
 | 扩展 | 用途 |
 |------|------|
 | `IContextCompactor` | 替换默认 LLM 摘要策略 |
-| `ILongTermMemory` | 替换默认向量数据库后端 |
+| `ILongTermMemory` | 长期记忆后端（预留接口，待实现） |
 | `call_model_input_filter` 钩子 | LLM 调用前最后拦截点 |
 | `CompactionOptions` | 配置保留策略 |
 | `PreCompact` 钩子 | 压缩前存档完整记录 |
-| `MemoryOptions` | 配置复合评分权重、去重阈值、存储后端 |
 
 ---
 
