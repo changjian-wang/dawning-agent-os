@@ -26,6 +26,12 @@ status: active
 
 做第 19 个框架，你需要回答："用户为什么不用 MAF？"——如果只是功能差异，答案通常是"没有理由"。
 
+> **Java 生态参考：Spring AI**——值得注意的是 Java 生态的对标 Spring AI，它以"统一抽象层 + 一个接口多种实现"的模式获得广泛采用：
+>
+> ![Spring AI 架构](../images/frameworks/architecture/Spring-AI.png)
+>
+> Spring AI 提供 Chat Client / Embedding / Vector Store / RAG Pipeline / Function Calling 等统一接口，后端可无缝切换 OpenAI / Azure / Anthropic / HuggingFace 以及 PGVector / ElasticSearch / Milvus。这套"供应商无关 + 与框架深度集成"的思路是 Dawning 在 .NET 生态的重要设计灵感，但 Dawning 走得更远——不止于 Framework 抽象，而是 Agent OS 内核。
+
 ---
 
 ## 2. 我们设计的不是框架

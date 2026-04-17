@@ -101,6 +101,15 @@ ADK 是 A2A 协议的原生支持者之一：
 
 ![A2A 协议集成](../../images/frameworks/03-google-adk-a2a.png)
 
+**A2A 协议三大核心抽象**：
+
+![Google A2A 协议架构](../../images/frameworks/architecture/Google-A2A-architecture.png)
+
+- **Agent Card**（Agent Discovery）：描述 capabilities、endpoint、auth schema
+- **Task**（Task Lifecycle）：`submitted → working → completed` 三态生命周期
+- **Message**（Data Exchange）：text / file / form / artifact 多类型消息载荷
+- **传输层**：HTTP/HTTPS + JSON-RPC 2.0 + RESTful + SSE Streaming
+
 **A2A 能力**：
 - 跨框架 Agent 发现
 - 标准化通信格式

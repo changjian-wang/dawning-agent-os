@@ -24,7 +24,10 @@ AI Agent 框架领域在 2025-2026 年经历了快速整合。关键趋势：
 
 - **微软整合**：AutoGen → 维护模式；Semantic Kernel Agents + 全新 Microsoft Agent Framework (MAF) 作为企业级继任者。
 - **多语言扩展**：Google ADK (Python + Java + Go)、MAF (.NET + Python)、Semantic Kernel (C# + Python + Java)。.NET 生态在大多数框架中仍然被低估。
-- **协议标准化**：A2A（Agent-to-Agent）和 MCP（Model Context Protocol）正在成为 Agent 互操作和工具集成的事实标准。
+- **协议标准化**：A2A（Agent-to-Agent）和 MCP（Model Context Protocol）正在成为 Agent 互操作和工具集成的事实标准。两者互补而非竞争——A2A 解决 Agent 之间如何通信，MCP 解决 Agent 如何调用工具：
+
+  ![A2A 与 MCP 协议对比](../images/frameworks/architecture/A2A-to-MCP.png)
+
 - **工作流即图**：几乎所有生产级框架现在都将 Agent 编排建模为有状态图（LangGraph、MAF Workflows、CrewAI Flows、Pydantic AI Graph）。
 - **记忆成熟化**：短期（会话）+ 长期（语义/向量）记忆已成基线；前沿方向是自改进记忆（技能演化、观察记忆）。
 - **代码优先 Agent**：smolagents 和 DSPy 代表了 Agent 从发出工具调用 JSON 向编写和执行代码的转变。
@@ -124,6 +127,13 @@ AI Agent 框架领域在 2025-2026 年经历了快速整合。关键趋势：
 ### 3.3 LangGraph
 
 **定位**：面向有状态 Agent 的底层编排框架。LangChain Agent 底层的"图引擎"。
+
+> **上下文：LangChain 生态六大模块**——LangGraph 脱胎于 LangChain 的 `Chains` 编排层，理解其生态全貌有助于定位 LangGraph 的位置：
+>
+> ![LangChain 核心模块](../images/frameworks/architecture/LangChain-Models.png)
+>
+> 其中 Chains 作为枢纽，连接 Models / Prompts / Indexes / Memory / Agents 五大模块。LangGraph 是 Chains 的图形化、有状态演进版本。
+
 
 | 维度 | 详情 |
 |------|------|
