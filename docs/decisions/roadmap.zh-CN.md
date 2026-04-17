@@ -1,23 +1,25 @@
 ---
-title: "路线图：分层学习路径"
+title: "路线图：分层构建路径"
 type: decision
-tags: [roadmap, architecture, learning-path]
-sources: [decisions/success-criteria.md, decisions/success-criteria.zh-CN.md]
+tags: [roadmap, architecture, agent-os, microkernel]
+sources: [decisions/success-criteria.md, decisions/success-criteria.zh-CN.md, concepts/agent-os-architecture.zh-CN.md]
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-17
 status: active
 ---
 
-# 路线图：分层学习路径
+# 路线图：分层构建路径
 
-> 以知识依赖为序，逐层构建企业级分布式多 Agent .NET 框架（含技能自演化能力）。
+> 以知识依赖为序，逐层构建 Dawning Agent OS——AI Agent 的微内核操作系统（含技能自演化能力）。
+>
+> OS 架构总览见 [[concepts/agent-os-architecture.zh-CN]]。
 
 ## 指导原则
 
 - **深度优先于速度** —— 每一层先彻底理解，再动手实现。
 - **依赖驱动排序** —— 每一层依赖前一层，不跳层。
-- **学 → 设计 → 建 → 验** —— 每一层产出：框架研究笔记、设计决策文档（`decisions/`）、实现 + 测试、已验证 SC 项。
-- **dawning-assistant 作为第一消费者** —— 每个特性必须被真实使用。
+- **学 → 设计 → 建 → 验** —— 每一层产出：竞品研究笔记、设计决策文档（`decisions/`）、实现 + 测试、已验证 SC 项。
+- **dawning-assistant 作为第一个用户态应用** —— 每个特性必须被真实使用。
 
 ## 依赖图
 
@@ -25,7 +27,9 @@ status: active
 
 ---
 
-## Layer 0：LLM Provider 抽象
+## Layer 0：LLM Driver（硬件驱动）
+
+> OS 类比：硬件驱动程序——屏蔽不同 LLM 提供商的差异，提供统一接口。
 
 **前置依赖**：无。
 
@@ -33,22 +37,24 @@ status: active
 - 流式协议（SSE、chunked transfer）
 - Token 计数与上下文窗口管理
 - Function calling / tool-use schema（OpenAI、Ollama、Azure OpenAI）
-- Provider 故障转移与重试模式
+- Driver 故障转移与重试模式
 
 **交付物**：
 - `ILLMProvider` 接口（ChatAsync、ChatStreamAsync、ChatStreamEventsAsync）
 - 统一流式事件模型（TextDelta、ToolCallRequested、ToolCallCompleted、RunCompleted、Error）
-- 至少 2 个 Provider：Ollama（本地）+ OpenAI（远程）
+- 至少 2 个 Driver：Ollama（本地）+ OpenAI（远程）
 - 每次调用的 token 用量 / 延迟 / 成本追踪
-- Provider 契约测试套件
+- Driver 契约测试套件
 
 **验证**：SC-7（LLM Provider 层）
 
-**设计文档**：`decisions/llm-provider-design.md`
+**设计文档**：`decisions/llm-driver-design.md`
 
 ---
 
-## Layer 1：Agent 循环与 Tool 协议
+## Layer 1：Agent Loop 与 Tool 协议（内核执行引擎）
+
+> OS 类比：系统调用层——定义 Agent 的核心执行循环和工具调用协议。
 
 **前置依赖**：Layer 0。
 
@@ -75,15 +81,17 @@ status: active
 
 **验证**：SC-3（Stateful Prompt 协议）
 
-**设计文档**：`decisions/agent-loop-design.md`
+**设计文档**：`decisions/kernel-loop-design.md`
 
 ---
 
-## Layer 2：记忆系统
+## Layer 2：Memory Plane（存储层）
+
+> OS 类比：虚拟内存 + 文件系统——分层存储，短期状态如 RAM，长期知识如磁盘。
 
 **前置依赖**：Layer 1。
 
-> **注意**：长期记忆（向量检索）方案仍在评估中，存在已知局限（详见 [concepts/context-management.md](../concepts/context-management.md)）。本层当前仅确认短期记忆部分，长期记忆交付物待定。
+> **注意**：长期知识存储（向量检索）方案仍在评估中，存在已知局限（详见 [concepts/context-management.md](../concepts/context-management.md)）。本层当前仅确认短期记忆部分，长期知识服务交付物待定。
 
 **需要掌握的知识**：
 - 上下文窗口管理策略（buffer、滑动窗口、摘要压缩）
@@ -99,11 +107,13 @@ status: active
 
 **验证**：SC-8（记忆系统）
 
-**设计文档**：`decisions/memory-system-design.md`
+**设计文档**：`decisions/memory-plane-design.md`
 
 ---
 
-## Layer 3：多 Agent 编排
+## Layer 3：Scheduler（进程调度器）
+
+> OS 类比：进程调度器——多 Agent 编排、任务分发、所有权转移。
 
 **前置依赖**：Layer 1 + Layer 2。
 
@@ -122,11 +132,13 @@ status: active
 
 **验证**：SC-2（多 Agent 协作）
 
-**设计文档**：`decisions/multi-agent-orchestration-design.md`
+**设计文档**：`decisions/scheduler-design.md`
 
 ---
 
-## Layer 4：技能路由器（Read Phase）
+## Layer 4：Skill Router（动态链接器）
+
+> OS 类比：动态链接器 / 共享库加载器——按需加载最合适的技能包。
 
 **前置依赖**：Layer 2 + Layer 3。
 
@@ -149,7 +161,9 @@ status: active
 
 ---
 
-## Layer 5：技能演化（Write Phase）
+## Layer 5：Skill Evolution（包管理器）
+
+> OS 类比：包管理器——技能的安装、升级、灰度发布、回滚、废弃。
 
 **前置依赖**：Layer 4。
 
@@ -175,7 +189,9 @@ status: active
 
 ---
 
-## Layer 6：分布式架构（三面体）
+## Layer 6：IPC 与分布式内核
+
+> OS 类比：进程间通信（IPC）+ 分布式内核——三面体通过异步消息总线通信。
 
 **前置依赖**：Layer 3 + Layer 5。
 
@@ -197,11 +213,13 @@ status: active
 
 **验证**：SC-1（分布式架构）
 
-**设计文档**：`decisions/distributed-architecture-design.md`
+**设计文档**：`decisions/ipc-distributed-kernel-design.md`
 
 ---
 
-## Layer 7：治理、合规与可观测性
+## Layer 7：Security 子系统（治理、合规与可观测性）
+
+> OS 类比：安全子系统——RBAC、审计日志、策略引擎、可观测性。
 
 **前置依赖**：Layer 6。
 
@@ -228,14 +246,16 @@ status: active
 
 **验证**：SC-9（安全、合规与治理）+ SC-10（可观测性、SLO 与发布门禁）
 
-**设计文档**：`decisions/governance-observability-design.md`
+**设计文档**：`decisions/security-subsystem-design.md`
 
 ---
 
 ## 交叉引用
 
+- [[concepts/agent-os-architecture.zh-CN]] —— Agent OS 架构总览（微内核、三面体→子系统映射）
 - [[decisions/success-criteria]] —— 完整 49 项验收清单（SC-1 到 SC-10）
-- [[decisions/phase-0-overview]] —— 技术栈与架构原则
+- [[decisions/phase-0-overview]] —— 技术栈与架构原则（历史文档，Agent Framework 时期）
+- [[comparisons/agent-os-vs-frameworks]] —— 为什么 OS 而不是 Framework
 - [[comparisons/agent-framework-landscape.zh-CN]] —— 18 框架竞品分析
 - [[concepts/llm-fundamentals]] —— LLM 基础知识参考
 - [[raw/papers/memento-skills-2603.18743]] —— 技能自演化研究基础

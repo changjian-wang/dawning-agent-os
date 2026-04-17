@@ -1,7 +1,9 @@
 # 上下文管理：五种流派与 Dawning 设计决策
 
-> Agent 场景下上下文窗口管理的竞品分析和 Dawning Agent Framework 的双层记忆架构设计。
+> Agent 场景下上下文窗口管理的竞品分析和 Dawning Agent OS 存储层（Memory Plane）的双层记忆架构设计。
 > LLM 基础概念见 [LLM 技术原理](llm-fundamentals.md)。
+>
+> OS 类比：上下文管理 = 虚拟内存管理。见 [[concepts/agent-os-architecture.zh-CN]]。
 
 ---
 

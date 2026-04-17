@@ -1,7 +1,9 @@
 # Agent 框架全景分析
 
 > 截至 2026 年 4 月，市面上所有主流 AI Agent 框架的全面调研。
-> 目的：为 Dawning Agent Framework 的架构决策提供依据。
+> 目的：为 Dawning Agent OS 的架构决策提供依据——**为什么 OS 而不是 Framework**。
+>
+> 差异化定位分析见 [[comparisons/agent-os-vs-frameworks]]。
 
 ---
 
@@ -27,7 +29,7 @@ AI Agent 框架领域在 2025-2026 年经历了快速整合。关键趋势：
 - **记忆成熟化**：短期（会话）+ 长期（语义/向量）记忆已成基线；前沿方向是自改进记忆（技能演化、观察记忆）。
 - **代码优先 Agent**：smolagents 和 DSPy 代表了 Agent 从发出工具调用 JSON 向编写和执行代码的转变。
 
-**Dawning 的机会**：没有任何 .NET 原生框架同时提供：分布式三面架构 + 技能自演化 + 企业级 DI 模式。这是我们的差异化定位。
+**Dawning 的定位**：不做第 19 个框架。Dawning Agent OS 是 .NET 原生的 AI Agent 微内核操作系统——分布式三面架构 + 技能自演化 + 企业级 DI 模式。详见 [[comparisons/agent-os-vs-frameworks]]。
 
 ---
 
@@ -506,6 +508,6 @@ AI Agent 框架领域在 2025-2026 年经历了快速整合。关键趋势：
 
 ---
 
-*文档版本：1.0*
-*最后更新：2026-04-07*
-*作者：AI 辅助分析，服务于 Dawning Agent Framework*
+*文档版本：1.1*
+*最后更新：2026-04-17*
+*作者：AI 辅助分析，服务于 Dawning Agent OS*

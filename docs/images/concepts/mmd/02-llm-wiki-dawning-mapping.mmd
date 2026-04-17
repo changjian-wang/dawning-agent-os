@@ -9,10 +9,10 @@ graph LR
         S7["index.md（内容索引）"]
         S8["log.md（操作日志）"]
     end
-    subgraph DAF["Dawning Agent Framework"]
+    subgraph DAF["Dawning Agent OS — 存储层"]
         D1["控制面 / IMemorySchema"]
-        D2["记忆面 / Compiled Knowledge Store"]
-        D3["记忆面 / Raw Knowledge Store"]
+        D2["存储层 / Compiled Knowledge Store"]
+        D3["存储层 / Raw Knowledge Store"]
         D4["IKnowledgeCompiler.IngestAsync()"]
         D5["IKnowledgeQuery.SearchAsync()"]
         D6["IKnowledgeMaintenance.LintAsync()"]

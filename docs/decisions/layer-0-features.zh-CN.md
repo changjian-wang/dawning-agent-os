@@ -1,18 +1,18 @@
 ---
-title: "Layer 0 功能清单：LLM Provider 抽象"
+title: "Layer 0 功能清单：LLM Driver 抽象"
 type: decision
-tags: [layer-0, llm-provider, features]
+tags: [layer-0, llm-driver, features, agent-os]
 sources: [decisions/layer-0-requirements.zh-CN.md, decisions/success-criteria.zh-CN.md]
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-17
 status: active
 ---
 
-# Layer 0 功能清单：LLM Provider 抽象
+# Layer 0 功能清单：LLM Driver 抽象
 
 > 按功能域分组，每个功能标注优先级、复杂度、SC 映射。
 >
-> **注意**：dawning-agent-framework 是全新项目，所有功能均需从零实现。
+> **注意**：Dawning Agent OS 是全新项目，所有功能均需从零实现。
 > “参考”列表示 dawning-agents 中是否有可借鉴的设计，不代表代码复用。
 
 ## 优先级定义
@@ -36,7 +36,7 @@ status: active
 
 ## 域 1：核心抽象（Abstractions）
 
-> 定义在 `Dawning.AgentFramework.Abstractions` 中，零外部依赖。
+> 定义在 `Dawning.AgentOS.Abstractions` 中，零外部依赖。
 
 | # | 功能 | 优先级 | 复杂度 | SC | 参考 | 说明 |
 |---|------|--------|--------|-----|------|------|

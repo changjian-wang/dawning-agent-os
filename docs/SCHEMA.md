@@ -1,7 +1,10 @@
-# SCHEMA.md — Dawning Agent Framework Wiki 模式定义
+# SCHEMA.md — Dawning Agent OS Wiki 模式定义
 
 > 本文件是 LLM Wiki 的核心配置文件。它定义了 wiki 的结构约定、工作流规则和维护标准。
 > LLM 在操作 wiki 时必须遵循此 Schema。人类和 LLM 共同演化此文件。
+>
+> **术语变更**（2026-04-17）：项目从 "Agent Framework" 更名为 "Agent OS"。
+> 命名空间从 `Dawning.AgentFramework.*` 变更为 `Dawning.AgentOS.*`。
 
 ---
 

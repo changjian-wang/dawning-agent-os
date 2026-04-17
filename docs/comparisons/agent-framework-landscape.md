@@ -1,7 +1,9 @@
 # Agent Framework Landscape Analysis
 
 > Comprehensive survey of all major AI agent frameworks as of April 2026.
-> Purpose: Inform architecture decisions for the Dawning Agent Framework.
+> Purpose: Inform architecture decisions for Dawning Agent OS — why an OS, not another framework.
+>
+> See also: [[comparisons/agent-os-vs-frameworks]] for positioning analysis.
 
 ---
 
@@ -506,6 +508,6 @@ Based on this survey, the following are **minimum requirements** for any serious
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2026-04-07*
-*Author: AI-assisted analysis for Dawning Agent Framework*
+*Document Version: 1.1*
+*Last Updated: 2026-04-17*
+*Author: AI-assisted analysis for Dawning Agent OS*

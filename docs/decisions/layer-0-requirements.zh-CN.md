@@ -1,22 +1,24 @@
 ---
-title: "Layer 0 需求说明：LLM Provider 抽象"
+title: "Layer 0 需求说明：LLM Driver 抽象"
 type: decision
-tags: [layer-0, llm-provider, requirements]
-sources: [decisions/success-criteria.zh-CN.md, decisions/phase-0-overview.md]
+tags: [layer-0, llm-driver, requirements, agent-os]
+sources: [decisions/success-criteria.zh-CN.md, decisions/phase-0-overview.md, concepts/agent-os-architecture.zh-CN.md]
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-17
 status: active
 ---
 
-# Layer 0 需求说明：LLM Provider 抽象
+# Layer 0 需求说明：LLM Driver 抽象
 
-> 屏蔽 LLM 提供商差异，为上层 Agent 循环提供统一、可靠、可观测的模型访问层。
+> 屏蔽 LLM 提供商差异，为上层内核执行引擎提供统一、可靠、可观测的模型访问层。
+>
+> OS 类比：硬件驱动程序。见 [[concepts/agent-os-architecture.zh-CN]]。
 
 ## 1. 问题定义
 
 ### 1.1 为什么需要 LLM Provider 抽象
 
-LLM 是 Agent 框架的"引擎"。不同提供商（OpenAI、Anthropic、Azure OpenAI、Ollama、DeepSeek、Qwen 等）的 API 在以下维度存在差异：
+LLM 是 Agent OS 的“硬件引擎”。不同提供商（OpenAI、Anthropic、Azure OpenAI、Ollama、DeepSeek、Qwen 等）的 API 在以下维度存在差异：
 
 | 差异维度 | OpenAI | Anthropic | Ollama | Azure OpenAI |
 |---------|--------|-----------|--------|-------------|
@@ -29,7 +31,7 @@ LLM 是 Agent 框架的"引擎"。不同提供商（OpenAI、Anthropic、Azure O
 | 并行 tool call | ✅ | ✅ | ✅ | ✅ |
 | 定价模型 | per-token | per-token | 免费(本地) | per-token |
 
-**如果不抽象**：上层 Agent 代码与具体提供商耦合，切换提供商需要改业务代码，无法测试。
+**如果不抽象**：上层内核代码与具体提供商耦合，切换提供商需要改业务代码，无法测试。
 
 ### 1.2 用户场景
 
@@ -64,15 +66,15 @@ LLM 是 Agent 框架的"引擎"。不同提供商（OpenAI、Anthropic、Azure O
 
 | SC 项 | 简述 | 对应功能域 |
 |-------|------|-----------|
-| SC-7.1 | 至少 3 个 Provider（本地 + 公共云 + 企业云） | Provider 实现 |
+| SC-7.1 | 至少 3 个 Driver（本地 + 公共云 + 企业云） | Driver 实现 |
 | SC-7.2 | 统一流式事件模型（5 种事件类型） | 流式抽象 |
 | SC-7.3 | 故障自动降级（同一 Run 内切换） | 弹性机制 |
 | SC-7.4 | Token 用量/延迟/成本采集，按 Run 聚合 | 可观测性 |
-| SC-7.5 | 新 Provider = 1 接口 + 1 DI 扩展，不改 Core | 可扩展性 |
+| SC-7.5 | 新 Driver = 1 接口 + 1 DI 扩展，不改 Core | 可扩展性 |
 
 ## 2. 参考实现分析（dawning-agents）
 
-> **重要**：dawning-agent-framework 是**全新项目**，不依赖 dawning-agents。
+> **重要**：dawning-agent-os 是**全新项目**，不依赖 dawning-agents。
 > dawning-agents 仅作为学习参考，用于了解哪些设计已被验证可行、哪些是已知不足。
 
 ### 2.1 dawning-agents 中已验证可行的设计
@@ -90,11 +92,11 @@ LLM 是 Agent 框架的"引擎"。不同提供商（OpenAI、Anthropic、Azure O
 
 | 不足 | 影响 | 新项目目标 |
 |------|------|-----------|
-| 无 Provider 故障降级 | 主 Provider 故障时 Agent Run 直接失败 | SC-7.3：同一 Run 内自动切换 |
+| 无 Driver 故障降级 | 主 Driver 故障时 Agent Run 直接失败 | SC-7.3：同一 Run 内自动切换 |
 | 无成本估算 | 无法追踪和控制 LLM 调用费用 | SC-7.4：按模型价格表估算 USD |
 | 无按 Run 聚合指标 | 单次调用有 token 记录，但无 Run 级汇总 | SC-7.4：token/延迟/成本 Run 级聚合 |
-| 无 Provider 契约测试 | 新 Provider 实现质量无法自动验证 | SC-7.5：标准测试套件 |
-| 无 Anthropic Provider | 缺少 Claude 系列模型支持 | SC-7.1：4+ Provider 覆盖 |
+| 无 Driver 契约测试 | 新 Driver 实现质量无法自动验证 | SC-7.5：标准测试套件 |
+| 无 Anthropic Driver | 缺少 Claude 系列模型支持 | SC-7.1：4+ Driver 覆盖 |
 | 流式事件类型不够明确 | 混合使用字段判断，代码不够清晰 | 5 种明确事件类型 |
 | 无上下文窗口管理 | 上层需要自行控制 token 用量 | 自动检测 + 占比报告 |
 | 无模型能力声明 | 上层无法查询模型是否支持特定功能 | ModelCapabilities 配置声明 |

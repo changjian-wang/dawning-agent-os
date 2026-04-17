@@ -1,20 +1,21 @@
 ---
 title: "成功标准：10 维度验收清单"
 type: decision
-tags: [success-criteria, verification, definition-of-done]
-sources: [raw/papers/memento-skills-2603.18743.md]
+tags: [success-criteria, verification, definition-of-done, agent-os]
+sources: [raw/papers/memento-skills-2603.18743.md, concepts/agent-os-architecture.zh-CN.md]
 created: 2026-04-07
-updated: 2026-04-08
+updated: 2026-04-17
 status: active
 ---
 
 # 成功标准：10 维度验收清单
 
-> 企业级分布式多 Agent .NET 框架（含技能自演化）的完整验收标准。
+> Dawning Agent OS（AI Agent 微内核操作系统）的完整验收标准。
 >
 > 以下每一项必须通过验证。按 10 个维度分组（共 49 子项）。
 >
-> 分层实现顺序见 [[decisions/roadmap.zh-CN]]。
+> 分层构建顺序见 [[decisions/roadmap.zh-CN]]。
+> OS 架构总览见 [[concepts/agent-os-architecture.zh-CN]]。
 
 ## 0. 成功标准（Definition of Done）
 

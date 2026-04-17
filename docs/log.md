@@ -58,6 +58,39 @@
   - Q3: 成本估算 → 配置驱动价格表（IOptions<ModelPricingOptions>）
   - Q5: 模型能力 → 配置声明（非运行时探测）
 
+## [2026-04-17] restructure | Agent Framework → Agent OS
+
+- 背景：项目设计（三面体架构、技能演化、分布式消息总线、RBAC 治理等）已超出"框架"范畴，实际上是 AI Agent 的操作系统
+- 决策：从 "Dawning Agent Framework" 更名为 "Dawning Agent OS"，采用微内核架构隐喻
+- 命名空间变更：`Dawning.AgentFramework.*` → `Dawning.AgentOS.*`
+- 核心 OS 映射：
+  - Layer 0 LLM Provider → **LLM Driver**（硬件驱动）
+  - Layer 1 Agent Loop → **内核执行引擎**（系统调用）
+  - Layer 2 记忆系统 → **Memory Plane / 存储层**（虚拟内存 + 文件系统）
+  - Layer 3 多 Agent 编排 → **Scheduler**（进程调度器）
+  - Layer 4 技能路由器 → **动态链接器**
+  - Layer 5 技能演化 → **包管理器**
+  - Layer 6 分布式架构 → **IPC + 分布式内核**
+  - Layer 7 治理与合规 → **Security 子系统**
+- 新建页面：
+  - `concepts/agent-os-architecture.zh-CN.md`：OS 架构核心文档（微内核设计、三面体→子系统映射、命名空间表、分层图）
+  - `comparisons/agent-os-vs-frameworks.md`：Agent OS vs Frameworks 定位差异化分析
+- 更新页面：
+  - `index.md`：全面重写为 Agent OS 索引
+  - `SCHEMA.md`：标题和术语更新
+  - `decisions/roadmap.zh-CN.md`：所有 Layer 添加 OS 类比、设计文档重命名
+  - `decisions/phase-0-overview.md`：标记为历史文档，添加 OS 迁移说明
+  - `decisions/success-criteria.zh-CN.md`：标题和引用更新
+  - `decisions/layer-0-requirements.zh-CN.md`：标题、命名空间、术语全面更新
+  - `decisions/layer-0-features.zh-CN.md`：标题、命名空间更新
+  - `decisions/layer-0-tech-spec.zh-CN.md`：标题、命名空间更新
+  - `concepts/agent-loop.md`：标题和引言更新
+  - `concepts/context-management.md`：引言更新
+  - `concepts/llm-wiki-pattern.zh-CN.md`：引言更新
+  - `comparisons/agent-framework-landscape.zh-CN.md`：定位语更新
+  - `comparisons/agent-framework-landscape.md`：引言更新
+- 关键洞察：dawning-assistant 是 Agent OS 之上的第一个"用户态应用"（Shell），dawning-agents 是"标准库"
+
 ## [2026-04-08] decision | dawning-agent-framework 定位为全新项目
 
 - 决策：dawning-agent-framework 是**全新独立项目**，不依赖 dawning-agents，代码从零实现

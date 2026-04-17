@@ -1,7 +1,9 @@
-# Agent Loop：执行模式
+# Agent Loop：内核执行模式
 
 > Agent 的核心在于循环执行：接收任务 → LLM 推理 → 执行动作 → 观察结果 → 决定下一步。
-> 本文梳理主流 Agent 执行模式及其对 Dawning Agent Framework 设计的影响。
+> 本文梳理主流 Agent 执行模式及其对 Dawning Agent OS 内核设计的影响。
+>
+> OS 类比：Agent Loop = 系统调用层。见 [[concepts/agent-os-architecture.zh-CN]]。
 
 ---
 

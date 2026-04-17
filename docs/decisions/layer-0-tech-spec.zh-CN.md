@@ -1,18 +1,18 @@
 ---
-title: "Layer 0 技术规格：LLM Provider 抽象"
+title: "Layer 0 技术规格：LLM Driver 抽象"
 type: decision
-tags: [layer-0, llm-provider, tech-spec, api-design]
+tags: [layer-0, llm-driver, tech-spec, api-design, agent-os]
 sources: [decisions/layer-0-requirements.zh-CN.md, decisions/layer-0-features.zh-CN.md]
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-17
 status: draft
 ---
 
-# Layer 0 技术规格：LLM Provider 抽象
+# Layer 0 技术规格：LLM Driver 抽象
 
 > 定义 API 接口、数据模型、协议细节和关键技术选型。
 >
-> **注意**：本文档是 dawning-agent-framework 全新项目的设计规格。
+> **注意**：本文档是 Dawning Agent OS 全新项目的设计规格。
 > 接口设计参考了 dawning-agents 中已验证可行的模式，但代码从零实现。
 
 ## 1. 核心接口设计
@@ -20,10 +20,10 @@ status: draft
 ### 1.1 ILLMProvider
 
 ```csharp
-namespace Dawning.AgentFramework.Abstractions.LLM;
+namespace Dawning.AgentOS.Abstractions.LLM;
 
 /// <summary>
-/// LLM 提供商的统一抽象接口。
+/// LLM 提供商的统一驱动接口。
 /// 每个实现（Ollama、OpenAI、Azure、Anthropic）独立 NuGet 包。
 /// </summary>
 public interface ILLMProvider
@@ -574,13 +574,13 @@ public class LLMContextOverflowException : LLMProviderException
 ## 8. NuGet 包结构
 
 ```
-Dawning.AgentFramework.Abstractions          ← ILLMProvider, records, enums（零依赖）
-Dawning.AgentFramework.Core                  ← FallbackLLMProvider, CostCalculator, StreamingAccumulator
-Dawning.AgentFramework.Ollama                ← OllamaProvider + AddOllamaProvider()
-Dawning.AgentFramework.OpenAI                ← OpenAIProvider + OpenAICompatibleProvider + AddOpenAIProvider()
-Dawning.AgentFramework.Azure                 ← AzureOpenAIProvider + AddAzureOpenAIProvider()
-Dawning.AgentFramework.Anthropic             ← AnthropicProvider + AddAnthropicProvider()
-Dawning.AgentFramework.Testing               ← InMemoryProvider + RecordingProvider + ProviderContractTests
+Dawning.AgentOS.Abstractions          ← ILLMProvider, records, enums（零依赖）
+Dawning.AgentOS.Core                  ← FallbackLLMProvider, CostCalculator, StreamingAccumulator
+Dawning.AgentOS.Drivers.Ollama        ← OllamaProvider + AddOllamaDriver()
+Dawning.AgentOS.Drivers.OpenAI        ← OpenAIProvider + OpenAICompatibleProvider + AddOpenAIDriver()
+Dawning.AgentOS.Drivers.Azure         ← AzureOpenAIProvider + AddAzureOpenAIDriver()
+Dawning.AgentOS.Drivers.Anthropic     ← AnthropicProvider + AddAnthropicDriver()
+Dawning.AgentOS.Testing               ← InMemoryProvider + RecordingProvider + DriverContractTests
 ```
 
 ---
