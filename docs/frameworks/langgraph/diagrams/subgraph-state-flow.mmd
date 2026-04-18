@@ -1,0 +1,23 @@
+flowchart LR
+    subgraph Parent["父图 (ParentState)"]
+        PA[node A]
+        PSub[sub_node 子图实例]
+        PB[node B]
+    end
+
+    subgraph Sub["子图 (SubInternal)"]
+        SubIn[input mapper]
+        SubX[node X]
+        SubY[node Y]
+        SubOut[output mapper]
+    end
+
+    PA --> PSub
+    PSub --> SubIn
+    SubIn --> SubX --> SubY --> SubOut
+    SubOut --> PB
+
+    classDef parent fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef sub fill:#f3f0ff,stroke:#5f3dc4
+    class PA,PSub,PB parent
+    class SubIn,SubX,SubY,SubOut sub

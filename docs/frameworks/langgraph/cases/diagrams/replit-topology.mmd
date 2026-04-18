@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> Manager
+    Manager --> Editor: 任务派发
+    Editor --> Verifier: 编辑完成
+    Verifier --> Manager: 失败 / 重规划
+    Verifier --> Done: 通过
+    Manager --> HITL: 危险 / 不确定
+    HITL --> Manager: resume
+    Editor --> HITL: 大改动确认
+    HITL --> Editor: resume
+    Manager --> Done: 任务完成
+    Done --> [*]

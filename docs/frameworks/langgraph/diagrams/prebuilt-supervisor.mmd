@@ -1,0 +1,16 @@
+flowchart TB
+    Start([START]) --> Sup[supervisor<br/>react agent with handoff tools]
+    Sup --> Decide{tool_calls?}
+    Decide -->|transfer_to_search| W1[search_agent<br/>子图]
+    Decide -->|transfer_to_write| W2[write_agent<br/>子图]
+    Decide -->|transfer_to_review| W3[review_agent<br/>子图]
+    Decide -->|无 tool_calls| End([END])
+
+    W1 --> Sup
+    W2 --> Sup
+    W3 --> Sup
+
+    classDef sup fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef worker fill:#fff4e6,stroke:#f08c00
+    class Sup sup
+    class W1,W2,W3 worker

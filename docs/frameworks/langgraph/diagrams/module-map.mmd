@@ -1,0 +1,20 @@
+%% LangGraph 模块分层 stack（TB 方向，视觉"调用栈"）
+%% 渲染：https://mermaid.live/
+
+flowchart TB
+    UA["① 用户 API 层<br/>StateGraph · Functional API · Prebuilt"]
+    RT["② 运行时层<br/>CompiledStateGraph · Pregel · Scheduler · Task"]
+    PR["③ 原语层<br/>Command · Send · Interrupt · StreamMode"]
+    CH["④ 通道层<br/>LastValue · Topic · BinaryOperator · Ephemeral · AnyValue"]
+    CK["⑤ 持久化层<br/>BaseCheckpointSaver · SerializerProtocol"]
+    IM["⑥ 持久化实现<br/>Memory · SQLite · Postgres · DuckDB · Platform Store"]
+
+    UA -->|compile| RT
+    RT -->|read/write| CH
+    RT -->|use| PR
+    RT -->|put/get| CK
+    CK -->|adapter| IM
+
+    classDef layer fill:#f8f9fa,stroke:#495057,stroke-width:2px,color:#212529,rx:8,ry:8
+    class UA,RT,PR,CH,CK,IM layer
+

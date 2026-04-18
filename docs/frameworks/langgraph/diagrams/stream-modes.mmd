@@ -1,0 +1,22 @@
+flowchart TB
+    Pregel[Pregel.stream] --> Runner[PregelRunner]
+
+    Runner --> Hook1[节点开始]
+    Runner --> Hook2[节点结束]
+    Runner --> Hook3[LLM token]
+    Runner --> Hook4[get_stream_writer 写]
+    Runner --> Hook5[apply_writes 完成]
+
+    Hook1 --> Mu[updates / debug.task]
+    Hook2 --> Mu2[updates / debug.task_result]
+    Hook3 --> Mm[messages]
+    Hook4 --> Mc[custom]
+    Hook5 --> Mv[values / debug.checkpoint]
+
+    Mu & Mu2 & Mm & Mc & Mv --> Q[(StreamProtocol Queue)]
+    Q --> Iter[Caller iter]
+
+    classDef hook fill:#fff4e6,stroke:#f08c00
+    classDef mode fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    class Hook1,Hook2,Hook3,Hook4,Hook5 hook
+    class Mu,Mu2,Mm,Mc,Mv mode

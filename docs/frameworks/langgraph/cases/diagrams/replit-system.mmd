@@ -1,0 +1,43 @@
+flowchart TB
+    User[用户聊天框]
+    UI[Replit Web Editor UI]
+
+    subgraph LG["LangGraph 编排层"]
+        MGR[Manager Agent]
+        EDT[Editor Agent]
+        VFY[Verifier Agent]
+    end
+
+    subgraph Sandbox["容器沙箱"]
+        FS[文件系统]
+        Proc[进程 / shell]
+        Preview[Preview Server]
+    end
+
+    Tools[(工具集)]
+    LLM[Claude / GPT]
+    CKPT[(Postgres Checkpointer)]
+
+    User --> UI
+    UI --> MGR
+    MGR --> EDT
+    EDT --> VFY
+    VFY -->|fail| MGR
+    VFY -->|pass| User
+
+    EDT --> Tools
+    VFY --> Tools
+    Tools --> FS
+    Tools --> Proc
+    Tools --> Preview
+
+    MGR --> LLM
+    EDT --> LLM
+    VFY --> LLM
+
+    LG -.checkpoint.-> CKPT
+
+    classDef llm fill:#fff4e6,stroke:#f08c00
+    classDef sb fill:#fff5f5,stroke:#e03131
+    class MGR,EDT,VFY llm
+    class FS,Proc,Preview sb

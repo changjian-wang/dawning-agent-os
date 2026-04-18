@@ -1,0 +1,53 @@
+classDiagram
+    class Runnable {
+        <<interface>>
+        +invoke()
+        +stream()
+        +ainvoke()
+        +astream()
+    }
+    class Graph {
+        +nodes: dict
+        +edges: set
+        +branches: dict
+        +add_node()
+        +add_edge()
+        +add_conditional_edges()
+        +compile()
+    }
+    class StateGraph {
+        +schema: type
+        +channels: dict[BaseChannel]
+        +managed: dict[ManagedValue]
+        +input_schema, output_schema
+        +waiting_edges: set
+        +compile()
+    }
+    class Pregel {
+        +nodes: dict[PregelNode]
+        +channels: dict[BaseChannel]
+        +checkpointer
+        +invoke() / stream()
+    }
+    class CompiledGraph {
+        +builder: Graph
+        +attach_node()
+        +attach_edge()
+        +attach_branch()
+    }
+    class CompiledStateGraph {
+        +get_state()
+        +update_state()
+        +get_state_history()
+        +get_graph()
+    }
+    class MessageGraph {
+        <<MessagesState 预设>>
+    }
+
+    Runnable <|.. Pregel
+    Graph <|-- StateGraph
+    StateGraph <|-- MessageGraph
+    Pregel <|-- CompiledGraph
+    CompiledGraph <|-- CompiledStateGraph
+    StateGraph ..> CompiledStateGraph : compile()

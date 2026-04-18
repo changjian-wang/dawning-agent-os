@@ -1,0 +1,8 @@
+flowchart LR
+    Pregel --> Saver[BaseCheckpointSaver]
+    Saver --> Serde[SerializerProtocol]
+    Saver --> InMem[MemorySaver]
+    Saver --> SQLite[SqliteSaver / AsyncSqliteSaver]
+    Saver --> PG[PostgresSaver / AsyncPostgresSaver]
+    Saver --> DD[DuckDBSaver]
+    Saver --> Ext[LangGraph Platform Store]

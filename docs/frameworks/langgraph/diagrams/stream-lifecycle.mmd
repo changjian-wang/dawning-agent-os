@@ -1,0 +1,33 @@
+%% LangGraph 一次 .stream() 调用的生命周期时序图
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant CG as CompiledStateGraph
+    participant PR as Pregel
+    participant LP as PregelLoop
+    participant AL as algo.prepare_next_tasks
+    participant N as Node Fn
+    participant CH as Channels
+    participant CK as Checkpointer
+    participant ST as Stream Writer
+
+    U->>CG: app.stream(input, config)
+    CG->>PR: __stream__()
+    PR->>CK: get_tuple(config)
+    CK-->>PR: CheckpointTuple | None
+    PR->>LP: enter loop
+
+    loop Superstep N
+        LP->>AL: prepare_next_tasks(channels, checkpoint)
+        AL-->>LP: List[PregelExecutableTask]
+        par 并行 tasks
+            LP->>N: task.proc(input)
+            N-->>LP: updates (dict | Command | Send)
+        end
+        LP->>CH: apply_writes(updates)
+        CH->>CK: put(checkpoint)
+        LP->>ST: emit events
+    end
+
+    LP-->>PR: done / interrupt
+    PR-->>U: async iter of events

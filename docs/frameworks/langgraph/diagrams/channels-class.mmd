@@ -1,0 +1,42 @@
+classDiagram
+    class BaseChannel~Value, Update, C~ {
+        <<abstract>>
+        +ValueType: type
+        +UpdateType: type
+        +update(values) bool
+        +get() Value
+        +checkpoint() C
+        +from_checkpoint(c) Self
+        +is_available() bool
+        +consume() bool
+    }
+
+    class LastValue~Value~ {
+        +value: Value
+        +update(values) 单写覆盖
+    }
+    class BinaryOperatorAggregate~Value~ {
+        +operator: Callable
+        +update(values) reducer 折叠
+    }
+    class Topic~Value~ {
+        +accumulate: bool
+        +values: list
+    }
+    class AnyValue~Value~ {
+        +update(values) 取一
+    }
+    class EphemeralValue~Value~ {
+        +checkpoint() None
+        +consume() 读完即清
+    }
+    class UntrackedValue~Value~ {
+        +不 bump 版本号
+    }
+
+    BaseChannel <|-- LastValue
+    BaseChannel <|-- BinaryOperatorAggregate
+    BaseChannel <|-- Topic
+    BaseChannel <|-- AnyValue
+    BaseChannel <|-- EphemeralValue
+    BaseChannel <|-- UntrackedValue

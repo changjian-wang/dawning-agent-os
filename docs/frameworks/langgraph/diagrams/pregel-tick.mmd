@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant P as Pregel.stream
+    participant L as PregelLoop
+    participant A as algo
+    participant R as PregelRunner
+    participant E as Executor
+    participant N as Node Fn
+    participant CK as Checkpointer
+
+    U->>P: stream(input, config)
+    P->>L: enter loop(input)
+    L->>CK: get_tuple(config)
+    CK-->>L: CheckpointTuple | None
+    L->>L: channels_from_checkpoint()
+
+    loop superstep N
+        L->>A: prepare_next_tasks(channels, checkpoint, pending_pushes)
+        A-->>L: List[PregelExecutableTask]
+        L->>L: check interrupt_before
+        L->>R: tick(tasks)
+        par 并发执行
+            R->>E: submit(task)
+            E->>N: task.proc(input, writes)
+            N-->>E: dict | Command | Send | interrupt()
+            E-->>R: future done
+        end
+        R->>R: collect writes, emit stream events
+        R-->>L: tasks done
+        L->>A: apply_writes(channels, tasks, get_next_version)
+        A->>A: 更新 channel_versions + versions_seen
+        L->>CK: put(checkpoint)
+        L->>L: check interrupt_after
+        L->>U: yield events (updates/values/messages/...)
+    end
+
+    L-->>P: done | interrupted
+    P-->>U: 返回最终事件

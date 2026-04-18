@@ -1,0 +1,22 @@
+flowchart TB
+    Pregel["pregel/__init__.py<br/>Pregel"]
+    Loop["pregel/loop.py<br/>PregelLoop"]
+    Runner["pregel/runner.py<br/>PregelRunner"]
+    Algo["pregel/algo.py<br/>prepare_next_tasks · apply_writes"]
+    Executor["pregel/_executor.py<br/>BackgroundExecutor / Async"]
+    RW["pregel/read.py · write.py<br/>ChannelRead · ChannelWrite"]
+    Manager["pregel/manager.py<br/>Channels + Checkpointer lifecycle"]
+    Stream["pregel/messages.py · debug.py · io.py<br/>Stream encoders"]
+
+    Pregel --> Loop
+    Loop --> Algo
+    Loop --> Runner
+    Loop --> Manager
+    Runner --> Executor
+    Runner --> Stream
+    Algo -. uses .-> RW
+
+    classDef core fill:#e7f5ff,stroke:#1971c2,color:#0b3d91,rx:6,ry:6
+    classDef io fill:#fff4e6,stroke:#f08c00,rx:6,ry:6
+    class Pregel,Loop,Runner,Algo core
+    class Executor,RW,Manager,Stream io

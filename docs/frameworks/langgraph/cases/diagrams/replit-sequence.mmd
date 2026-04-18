@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant M as Manager
+    participant E as Editor
+    participant V as Verifier
+    participant S as Sandbox
+
+    U->>M: "做一个 Todo App"
+    M->>M: 拆解 todo[]
+    M->>E: 创建 src/App.tsx
+    E->>S: create_file
+    E->>S: install_package react
+    E->>V: 准备好了
+    V->>S: npm run build
+    S-->>V: error: missing import
+    V->>M: fail (附 error)
+    M->>E: 修 import
+    E->>S: str_replace_editor
+    E->>V: 重试
+    V->>S: build + preview
+    S-->>V: ok
+    V->>M: pass
+    M->>U: 完成 + preview link

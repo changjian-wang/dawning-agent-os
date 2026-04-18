@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant N1 as Node A
+    participant N2 as Node B
+    participant L as PregelLoop
+    participant CH as Channel(messages)
+    participant CK as Checkpoint
+
+    Note over CK: channel_versions={messages:5}<br/>versions_seen={A:{messages:5}, B:{messages:5}}
+
+    L->>L: prepare_next_tasks
+    Note over L: A 看见 messages=5，等于 seen，不激活<br/>B 同理 → 都不跑 → END？
+    Note over CK: 假设外部 update_state 注入新 message → channel_versions={messages:6}
+
+    L->>L: prepare_next_tasks
+    Note over L: A.seen[messages]=5 < channel_versions=6 → 激活 A
+    L->>N1: run A
+    N1-->>L: writes messages=[m1]
+
+    L->>CH: apply_writes([m1])
+    CH->>CH: reducer 合并
+    CH-->>L: changed=true
+    L->>CK: channel_versions[messages]=7
+    L->>CK: versions_seen[A][messages]=7
+
+    Note over L: 下超步：A 自己 seen=7=current 不激活<br/>B.seen=5 < 7 激活
+    L->>N2: run B
+    N2-->>L: writes messages=[m2]
+    L->>CH: apply_writes([m2])
+    L->>CK: channel_versions[messages]=8, versions_seen[B][messages]=8

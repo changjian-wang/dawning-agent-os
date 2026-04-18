@@ -1,0 +1,11 @@
+flowchart LR
+    Start([START]) --> A[agent<br/>llm.bind_tools.invoke]
+    A --> C{should_continue}
+    C -->|tool_calls 非空| T[tools<br/>ToolNode]
+    C -->|tool_calls 空| End([END])
+    T --> A
+
+    classDef llm fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef tool fill:#fff4e6,stroke:#f08c00
+    class A llm
+    class T tool

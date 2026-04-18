@@ -1,0 +1,12 @@
+flowchart LR
+    User["@entrypoint def workflow(...): ..."] --> Decorator[Decorator]
+    Decorator --> SG[隐式 StateGraph]
+    User2["@task def step(...): ..."] --> TaskWrap[Task wrapper]
+    TaskWrap --> SG
+    SG --> Compile[compile + checkpointer]
+    Compile --> Pregel[Pregel runtime]
+
+    classDef user fill:#fff4e6,stroke:#f08c00
+    classDef impl fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    class User,User2 user
+    class SG,Compile,Pregel impl

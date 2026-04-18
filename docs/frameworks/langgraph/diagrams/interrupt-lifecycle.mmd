@@ -1,0 +1,33 @@
+sequenceDiagram
+    autonumber
+    participant FE as 前端
+    participant API as API
+    participant G as Graph
+    participant N as Node Fn
+    participant S as Scratchpad
+    participant CK as Checkpointer
+    participant U as User
+
+    FE->>API: invoke(input, config)
+    API->>G: stream(input, config)
+    G->>N: 第一次执行 node
+    N->>S: scratchpad.interrupt_counter()=0
+    N->>N: interrupt(draft) 抛 GraphInterrupt
+    G->>CK: put(checkpoint, pending_writes=[Interrupt(draft)])
+    G-->>API: stream event: interrupt(draft)
+    API-->>FE: SSE event:interrupt
+    FE-->>U: 渲染审阅 UI
+
+    Note over U: 审阅，决定 approve/edit
+    U->>FE: 提交决策
+    FE->>API: invoke(Command(resume=decision), config)
+    API->>G: 加载 checkpoint
+    G->>N: 第二次执行 node（同一 task）
+    N->>S: scratchpad.interrupt_counter()=0
+    N->>S: resumes=[decision]
+    N-->>N: interrupt() 不抛, 返回 decision
+    N->>N: 继续节点逻辑
+    N-->>G: 返回 dict / Command
+    G->>CK: apply_writes + put(checkpoint)
+    G-->>API: stream events 继续
+    API-->>FE: 完成

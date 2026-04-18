@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    participant L as PregelLoop
+    participant S as Saver
+    participant DB as Postgres
+
+    Note over L: superstep N 开始
+    L->>S: put(config, checkpoint_A, metadata, new_versions)
+    S->>DB: INSERT checkpoints (A)
+    S->>DB: INSERT checkpoint_blobs (变化的 channel × version)
+
+    par 并发执行 tasks
+        L->>L: task1.run
+        L->>S: put_writes(config, writes1, task1_id)
+        S->>DB: INSERT checkpoint_writes
+        L->>L: task2.run
+        L->>S: put_writes(config, writes2, task2_id)
+        S->>DB: INSERT checkpoint_writes
+    end
+
+    L->>L: barrier · apply_writes(in-memory)
+    L->>S: put(config, checkpoint_B, metadata, new_versions)
+    S->>DB: INSERT checkpoints (B)
+    S->>DB: INSERT checkpoint_blobs (变化的 channel × version)
+
+    Note over L,DB: 一个超步 = 4~6 次 DB 交互；<br/>未变 channel 不重写 blob

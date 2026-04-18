@@ -1,0 +1,28 @@
+flowchart LR
+    Loop[PregelLoop] --> Runner[PregelRunner]
+    Runner --> Submit{执行模式}
+    Submit -->|sync| BG[BackgroundExecutor<br/>ThreadPoolExecutor]
+    Submit -->|async| AB[AsyncBackgroundExecutor<br/>asyncio.create_task]
+    Submit -->|trio| TR[Trio nursery]
+
+    BG --> T1[Task 1]
+    BG --> T2[Task 2]
+    BG --> Tn[...]
+    AB --> A1[Task 1]
+    AB --> A2[Task 2]
+    AB --> An[...]
+
+    T1 -->|future| Collect[collect writes<br/>emit stream events]
+    T2 -->|future| Collect
+    A1 -->|task| Collect
+    A2 -->|task| Collect
+
+    Collect --> Barrier[barrier:<br/>apply_writes 单线程]
+    Barrier --> Loop
+
+    classDef exec fill:#fff4e6,stroke:#f08c00,rx:6,ry:6
+    classDef task fill:#e7f5ff,stroke:#1971c2,color:#0b3d91,rx:4,ry:4
+    classDef sync fill:#ffe3e3,stroke:#c92a2a,rx:6,ry:6
+    class BG,AB,TR exec
+    class T1,T2,Tn,A1,A2,An task
+    class Barrier sync

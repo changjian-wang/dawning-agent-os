@@ -1,0 +1,46 @@
+sequenceDiagram
+    autonumber
+    participant R as Recruiter
+    participant UI as Recruiter UI
+    participant API as API Gateway
+    participant G as LangGraph Engine
+    participant CK as PostgresSaver
+    participant LLM as LLM Models
+    participant LS as LangSmith
+    participant TG as Talent Graph
+
+    R->>UI: 创建招聘项目
+    UI->>API: POST /project (jd, criteria)
+    API->>G: invoke({"project_id":...})
+    G->>LLM: supervisor 规划
+    LLM-->>G: route=search
+    G->>TG: 搜候选人
+    TG-->>G: 候选人池
+    G->>CK: put(checkpoint)
+    G-->>UI: interrupt(search_review)
+    UI-->>R: 渲染候选人列表 + 条件
+    Note over R: Recruiter 调整条件 / 确认
+
+    R->>UI: 修改并 approve
+    UI->>API: POST /resume (decision)
+    API->>G: invoke(Command(resume=decision))
+    G->>LLM: match agent
+    LLM-->>G: shortlist + 解释
+    G->>CK: put(checkpoint)
+    G-->>UI: interrupt(shortlist_review)
+    UI-->>R: 渲染 Top N
+
+    R->>UI: approve
+    UI->>API: POST /resume
+    API->>G: invoke(Command(resume))
+    loop 每个 candidate
+        G->>LLM: outreach draft
+        G-->>UI: interrupt(outreach_review)
+        R->>UI: edit / approve
+        UI->>API: POST /resume
+        G->>API: send outreach
+    end
+
+    G->>LS: trace(全链路)
+    G->>CK: put(final checkpoint)
+    G-->>UI: 完成

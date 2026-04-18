@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> SelectActiveTasks
+    SelectActiveTasks --> ExecuteParallel : tasks 非空
+    SelectActiveTasks --> Done : tasks 空 & 无 pending writes
+    ExecuteParallel --> ApplyWrites
+    ApplyWrites --> Checkpoint
+    Checkpoint --> Interrupted : 有 interrupt()
+    Checkpoint --> SelectActiveTasks : 正常
+    Interrupted --> [*]
+    Done --> [*]

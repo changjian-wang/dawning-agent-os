@@ -1,0 +1,18 @@
+{
+  "theme": "default",
+  "themeVariables": {
+    "fontFamily": "-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif",
+    "fontSize": "16px"
+  },
+  "flowchart": {
+    "curve": "basis",
+    "nodeSpacing": 40,
+    "rankSpacing": 60,
+    "htmlLabels": true,
+    "padding": 14
+  },
+  "sequence": {
+    "actorMargin": 50,
+    "messageMargin": 40
+  }
+}

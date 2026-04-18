@@ -1,0 +1,50 @@
+flowchart LR
+    subgraph User["Recruiter 用户"]
+        Web[LinkedIn Recruiter UI]
+        Notif[通知/邮件]
+    end
+
+    subgraph Ingress["接入与权限"]
+        Auth[SSO + RBAC]
+        ABT[A/B Routing]
+    end
+
+    subgraph Engine["LangGraph Agent 平台"]
+        Sup[Supervisor]
+        SR[Search Agent]
+        MC[Match Agent]
+        OUT[Outreach Agent]
+        FU[Followup Agent]
+        HITL[HITL Gate]
+    end
+
+    subgraph Internal["LinkedIn 内部服务"]
+        TalentDB[(Talent Graph)]
+        JobsDB[(Jobs DB)]
+        MsgSvc[Messaging Service]
+        SafeSvc[Safety Classifier]
+    end
+
+    subgraph Data["数据 & 审计"]
+        PG[(PostgresSaver<br/>checkpoints)]
+        Audit[(Audit Store)]
+        LS[LangSmith]
+    end
+
+    subgraph Models["LLM 路由"]
+        M1[GPT-4o]
+        M2[Claude 3.5]
+        M3[内部 fine-tuned]
+    end
+
+    Web --> Auth --> ABT --> Sup
+    Sup --> SR --> TalentDB
+    Sup --> MC --> JobsDB
+    Sup --> OUT --> SafeSvc
+    Sup --> FU --> MsgSvc
+    Sup --> HITL --> Web
+    Engine --> M1 & M2 & M3
+    Engine --> PG
+    Engine --> Audit
+    Engine --> LS
+    HITL --> Notif

@@ -1,0 +1,25 @@
+flowchart TB
+    subgraph DIY["DIY"]
+        D1[langgraph SDK]
+        D2[自写 FastAPI / ASP.NET]
+        D3[Postgres]
+        D4[自建监控]
+    end
+
+    subgraph SH["Self-Hosted Platform (商业)"]
+        S1[LangGraph Server 容器]
+        S2[Postgres + Redis]
+        S3[Studio + 内置 API]
+        S4[LangSmith 自托管或 SaaS]
+    end
+
+    subgraph CL["Cloud Platform"]
+        C1[langgraph.app 托管]
+        C2[内置 Postgres / Redis]
+        C3[内置 Studio / Cron / Webhook]
+        C4[LangSmith Cloud]
+    end
+
+    DIY -.适合.- L1[小项目 / 已有平台]
+    SH -.适合.- L2[中大型 / 强合规]
+    CL -.适合.- L3[快速迭代 / 中小规模]

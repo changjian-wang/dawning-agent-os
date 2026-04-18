@@ -1,0 +1,30 @@
+flowchart TB
+    Start([START]) --> Plan[plan_sections<br/>顶层规划]
+    Plan -->|Send fan-out| F1[build_section_with_web_research #1]
+    Plan -->|Send fan-out| F2[build_section_with_web_research #2]
+    Plan -->|Send fan-out| Fn[build_section_with_web_research #N]
+
+    subgraph SubGraph["每个章节子图"]
+        GQ[generate_queries] --> SW[search_web]
+        SW --> Inputs[section_writer_inputs_node]
+        Inputs --> WS[write_section]
+        WS --> Refl{reflect_or_finish}
+        Refl -->|不够| SW
+        Refl -->|够| SubEnd([sub END])
+    end
+
+    F1 -.-> GQ
+    F2 -.-> GQ
+    Fn -.-> GQ
+
+    F1 --> Compile[compile_final_report]
+    F2 --> Compile
+    Fn --> Compile
+    Compile --> End([END])
+
+    classDef plan fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef fan fill:#fff4e6,stroke:#f08c00
+    classDef sub fill:#f3f0ff,stroke:#5f3dc4
+    class Plan,Compile plan
+    class F1,F2,Fn fan
+    class GQ,SW,Inputs,WS,Refl sub

@@ -1,0 +1,39 @@
+%% Klarna 客服 Agent 拓扑图（Router + 多 Subgraph + HITL）
+flowchart TB
+    Entry[入口节点 identify_intent]
+    Router{Router 业务域分类}
+
+    subgraph PaymentSG["支付子图"]
+        P1[加载订单]
+        P2[解释扣款]
+        P3[修复支付问题]
+        P4{需要人工?}
+    end
+
+    subgraph RefundSG["退款子图"]
+        R1[验证退款资格]
+        R2[发起退款]
+        R3[通知用户]
+        R4{金额 > 阈值?}
+    end
+
+    subgraph DisputeSG["争议子图"]
+        D1[收集证据]
+        D2[调用 KYC / 风控]
+        D3[生成工单]
+        HITLNode[人工介入]
+    end
+
+    Handoff[客服人员接管]
+
+    Entry --> Router
+    Router -->|payment| P1
+    Router -->|refund| R1
+    Router -->|dispute| D1
+    P1 --> P2 --> P3 --> P4
+    P4 -->|yes| Handoff
+    P4 -->|no| End1([结束])
+    R1 --> R2 --> R3 --> R4
+    R4 -->|yes| HITLNode --> Handoff
+    R4 -->|no| End2([结束])
+    D1 --> D2 --> D3 --> HITLNode --> Handoff

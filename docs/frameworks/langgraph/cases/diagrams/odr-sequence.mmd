@@ -1,0 +1,45 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant T as Top Graph
+    participant P as plan_sections
+    participant S1 as Section sub-agent #1
+    participant S2 as Section sub-agent #2
+    participant Sn as Section sub-agent #N
+    participant W as compile_final_report
+    participant LLM as LLM Models
+    participant Search as Search API
+
+    U->>T: invoke({"topic": ...})
+    T->>P: plan_sections(state)
+    P->>LLM: planner.with_structured_output(Sections)
+    LLM-->>P: Sections([s1, s2, ..., sN])
+
+    Note over T: Send fan-out: 一次派 N 个子图任务
+    par 并发
+        T->>S1: payload={section: s1, topic}
+        S1->>LLM: gen_queries
+        S1->>Search: search(q1, q2, ...)
+        Search-->>S1: raw results
+        S1->>LLM: write_section
+        LLM-->>S1: draft
+        S1->>LLM: reflect_grader
+        alt 通过
+            S1-->>T: completed_section #1
+        else 不够
+            S1->>Search: 再搜
+            S1->>LLM: 重写
+            S1-->>T: completed_section #1
+        end
+    and
+        T->>S2: payload={section: s2}
+        S2-->>T: completed_section #2
+    and
+        T->>Sn: payload={section: sN}
+        Sn-->>T: completed_section #N
+    end
+
+    T->>W: compile_final_report(state)
+    W->>LLM: 拼接 + 润色
+    LLM-->>W: final markdown
+    W-->>U: report

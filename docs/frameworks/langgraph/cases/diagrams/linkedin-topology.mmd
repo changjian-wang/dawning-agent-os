@@ -1,0 +1,35 @@
+flowchart TB
+    Start([START]) --> Sup[Supervisor]
+    Sup -->|search| SR[Search Agent]
+    Sup -->|match| MC[Match Agent]
+    Sup -->|outreach| OUT[Outreach Agent]
+    Sup -->|followup| FU[Followup Agent]
+
+    SR --> H1{HITL: 搜索条件确认}
+    H1 -->|approve| MC
+    H1 -->|edit| SR
+
+    MC --> H2{HITL: Top N 入选确认}
+    H2 -->|approve| OUT
+    H2 -->|edit| MC
+
+    OUT --> H3{HITL: 文案审阅}
+    H3 -->|approve| Send[发送外联]
+    H3 -->|edit| Send
+    H3 -->|regenerate| OUT
+    H3 -->|skip| End1([跳过])
+
+    FU --> H4{HITL: 回复审阅}
+    H4 -->|approve| Reply[回复消息]
+    H4 -->|edit| Reply
+
+    Send --> Done([END])
+    Reply --> Done
+    End1 --> Done
+
+    classDef agent fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef hitl fill:#fff4e6,stroke:#f08c00
+    classDef done fill:#d3f9d8,stroke:#2f9e44
+    class Sup,SR,MC,OUT,FU agent
+    class H1,H2,H3,H4 hitl
+    class Send,Reply,Done done

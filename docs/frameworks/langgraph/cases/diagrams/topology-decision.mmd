@@ -1,0 +1,22 @@
+flowchart TD
+    Start[新场景]
+    Q1{是否多个独立专家协作?}
+    Q2{是否需要并行处理多个独立子任务?}
+    Q3{是否需要 run → verify → fix 反馈环?}
+    Q4{是否每步都要人确认?}
+    Q5{是否单一 Agent + 工具足够?}
+
+    Start --> Q1
+    Q1 -->|是| Sup[Supervisor 模式 like Klarna]
+    Q1 -->|否| Q2
+    Q2 -->|是| MR[Map-Reduce + Send like ODR]
+    Q2 -->|否| Q3
+    Q3 -->|是| FB[反馈环三角 like Replit]
+    Q3 -->|否| Q4
+    Q4 -->|是| HITL[HITL pipeline like LinkedIn]
+    Q4 -->|否| Q5
+    Q5 -->|是| ReAct[create_react_agent]
+    Q5 -->|否| Custom[自定义 StateGraph]
+
+    classDef pat fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    class Sup,MR,FB,HITL,ReAct,Custom pat

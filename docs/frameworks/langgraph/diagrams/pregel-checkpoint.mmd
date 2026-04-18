@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    participant L as PregelLoop
+    participant CK as Checkpointer
+    participant CH as Channels
+    participant T as Tasks
+
+    Note over L,CK: superstep N 开始
+    L->>CK: put(checkpoint A)<br/>step=N, tasks=[...], channel_versions=v_n
+    L->>T: 并发执行任务
+    T-->>L: writes / Command / Send / interrupt
+
+    Note over L,CH: barrier
+    L->>CH: apply_writes(reducer 合并)
+    CH->>CH: channel_versions = v_(n+1)
+    L->>CK: put(checkpoint B)<br/>含 pending_writes / interrupted 标记
+
+    alt 有 interrupt()
+        L-->>L: 标记 interrupted, 退出循环
+        Note over CK: B 含 pending_writes，<br/>下次 invoke(Command(resume=...)) 从此恢复
+    else 正常
+        L->>L: superstep N+1
+    end
+
+    Note over L,CK: 关键不变量：<br/>A 用于 replay 任务列表，<br/>B 用于状态恢复

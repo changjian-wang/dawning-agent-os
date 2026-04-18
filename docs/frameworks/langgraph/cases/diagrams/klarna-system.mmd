@@ -1,0 +1,55 @@
+%% Klarna 客服 Agent 系统全景图
+flowchart LR
+    subgraph Users["用户入口"]
+        Web[Klarna App / Web]
+        IM[IM / 邮件渠道]
+    end
+
+    subgraph Ingress["接入层"]
+        LB[Gateway + Auth]
+        Rate[Rate Limit / 风控]
+    end
+
+    subgraph AgentPlatform["Agent 平台（LangGraph 驱动）"]
+        Router[Router Agent]
+        SG1[支付子图]
+        SG2[退款子图]
+        SG3[争议子图]
+        SG4[账号子图]
+        SG5[FAQ / 通识子图]
+        HITL[Human Handoff]
+    end
+
+    subgraph Services["Klarna 内部服务"]
+        Orders[订单服务]
+        Payments[支付服务]
+        KYC[KYC / 风控]
+        Refund[退款流程]
+        Notif[通知服务]
+    end
+
+    subgraph Data["数据与记忆"]
+        UserCtx[(用户画像)]
+        Hist[(对话历史)]
+        KB[(Knowledge Base RAG)]
+        Policy[(合规策略库)]
+    end
+
+    subgraph Observability["可观测 / 运维"]
+        LS[LangSmith Tracing]
+        Eval[Eval Pipeline]
+        Dash[业务 Dashboard]
+    end
+
+    Users --> Ingress --> Router
+    Router --> SG1 & SG2 & SG3 & SG4 & SG5
+    SG1 & SG2 & SG3 --> HITL
+    SG1 --> Payments
+    SG2 --> Refund
+    SG3 --> KYC
+    SG4 --> Orders
+    SG5 --> KB
+    AgentPlatform --> UserCtx & Hist & KB & Policy
+    AgentPlatform --> LS
+    LS --> Eval
+    Eval --> Dash

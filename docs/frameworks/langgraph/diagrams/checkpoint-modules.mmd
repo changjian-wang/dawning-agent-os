@@ -1,0 +1,19 @@
+flowchart TB
+    Abs["langgraph-checkpoint<br/>BaseCheckpointSaver · MemorySaver · Serde"]
+
+    SQ["langgraph-checkpoint-sqlite<br/>SqliteSaver / AsyncSqliteSaver"]
+    PG["langgraph-checkpoint-postgres<br/>PostgresSaver / AsyncPostgresSaver"]
+    DD["langgraph-checkpoint-duckdb<br/>DuckDBSaver"]
+    PT["LangGraph Platform Store<br/>(托管, 闭源)"]
+
+    Abs --> SQ
+    Abs --> PG
+    Abs --> DD
+    Abs --> PT
+
+    classDef abs fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef impl fill:#fff4e6,stroke:#f08c00
+    classDef ext fill:#f3f0ff,stroke:#5f3dc4
+    class Abs abs
+    class SQ,PG,DD impl
+    class PT ext

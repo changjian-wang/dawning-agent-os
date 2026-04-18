@@ -1,0 +1,9 @@
+flowchart LR
+    types --> channels
+    types --> pregel
+    channels --> pregel
+    checkpoint --> pregel
+    graph_mod[graph] --> pregel
+    pregel --> stream
+    prebuilt --> graph_mod
+    func --> pregel

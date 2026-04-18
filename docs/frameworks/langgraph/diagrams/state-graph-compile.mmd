@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant SG as StateGraph
+    participant V as _validate
+    participant CSG as CompiledStateGraph
+    participant PN as PregelNode
+    participant CH as Channels
+
+    U->>SG: compile(checkpointer, interrupt_before, ...)
+    SG->>V: 校验节点/边/孤立点
+    V-->>SG: ok
+    SG->>CSG: 构造 CompiledStateGraph(builder=self, channels={**schema, START: Ephemeral})
+
+    loop 每个 add_node 记录
+        SG->>CSG: attach_node(key, NodeSpec)
+        CSG->>PN: 包装 runnable, retry, cache, writers
+        CSG->>CH: 注册 key__inbox channel
+    end
+
+    loop 每条普通边 (a, b)
+        SG->>CSG: attach_edge(a, b)
+        CSG->>PN: b.triggers += a__done
+    end
+
+    loop 每条 join 边 ((a,b), c)
+        SG->>CSG: attach_edge((a,b), c)
+        CSG->>CH: 注册 __join_a_b channel
+        CSG->>PN: c.triggers += __join_a_b
+    end
+
+    loop 每个 conditional branch
+        SG->>CSG: attach_branch(src, name, BranchSpec)
+        CSG->>CH: 注册 BranchChannel(router, mapping)
+    end
+
+    CSG->>CSG: 挂 checkpointer / store / cache / debug
+    CSG-->>U: CompiledStateGraph (Pregel ready)

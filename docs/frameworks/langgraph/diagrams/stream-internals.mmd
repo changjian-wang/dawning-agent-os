@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    participant U as Caller
+    participant P as Pregel.stream
+    participant R as PregelRunner
+    participant N as Node
+    participant LLM as LLM Callback
+    participant W as get_stream_writer
+    participant Q as StreamProtocol Queue
+
+    U->>P: stream(input, mode=[updates, messages])
+    P->>R: tick
+    R->>N: run node X
+    N->>LLM: llm.invoke (streaming)
+    LLM-->>Q: chunk1 -> push messages
+    Q-->>U: yield (messages, chunk1)
+    LLM-->>Q: chunk2 -> push messages
+    Q-->>U: yield (messages, chunk2)
+    N->>W: writer({"progress":0.5})
+    W-->>Q: push custom
+    Q-->>U: yield (custom, ...)
+    N-->>R: return dict
+    R-->>Q: push updates {node:dict}
+    Q-->>U: yield (updates, ...)
+    R->>R: apply_writes
+    R-->>Q: push values (full state) — 仅当 values mode 开启

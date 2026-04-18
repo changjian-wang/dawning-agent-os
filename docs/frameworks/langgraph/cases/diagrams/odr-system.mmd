@@ -1,0 +1,35 @@
+flowchart LR
+    subgraph User["用户"]
+        UI[CLI / Notebook / Web UI]
+    end
+
+    subgraph Models["LLM 提供商"]
+        Plan[Planner Model<br/>o3 / Claude Opus]
+        Write[Writer Model<br/>GPT-4o / Claude Sonnet]
+        Sum[Summarizer Model<br/>GPT-4o-mini]
+    end
+
+    subgraph Search["搜索后端（任选）"]
+        Tav[Tavily]
+        Per[Perplexity]
+        Exa[Exa]
+        ArX[ArXiv / PubMed]
+        Etc[...]
+    end
+
+    subgraph Engine["LangGraph 运行时"]
+        SG[ReportGraph<br/>顶层 supervisor]
+        Sub[SectionSubgraph<br/>章节 sub-agent x N]
+        CK[(PostgresSaver<br/>checkpoint)]
+        Stream[Stream<br/>messages / updates]
+    end
+
+    UI --> SG
+    SG --> Plan
+    SG --> Sub
+    Sub --> Write
+    Sub --> Sum
+    Sub --> Search
+    SG --> CK
+    Sub --> CK
+    SG --> Stream --> UI

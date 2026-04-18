@@ -1,0 +1,16 @@
+flowchart TB
+    Base[StateGraph + ToolNode]
+    Base --> R[create_react_agent<br/>单 agent + 工具循环]
+    Base --> S[create_supervisor<br/>中央调度 + workers]
+    Base --> Sw[create_swarm<br/>互相 handoff]
+
+    R -.fork.- Custom1[自定义 ReAct 变种]
+    S -.fork.- Custom2[自定义 supervisor]
+    Sw -.fork.- Custom3[自定义 swarm]
+
+    classDef base fill:#f8f9fa,stroke:#495057
+    classDef api fill:#e7f5ff,stroke:#1971c2,color:#0b3d91
+    classDef custom fill:#fff4e6,stroke:#f08c00
+    class Base base
+    class R,S,Sw api
+    class Custom1,Custom2,Custom3 custom
