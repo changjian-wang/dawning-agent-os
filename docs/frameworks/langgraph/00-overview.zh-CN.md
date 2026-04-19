@@ -49,7 +49,7 @@ libs/
 ├── langgraph/               # 主包：Pregel / StateGraph / compiled graph
 │   └── langgraph/
 │       ├── graph/           # StateGraph / MessageGraph / constants
-│       ├── pregel/          # 执行引擎（BSP 风）
+│       ├── pregel/          # 执行引擎（BSP 风格：Bulk Synchronous Parallel）
 │       ├── channels/        # Channel 抽象（LastValue/Topic/BinaryOperator/...）
 │       ├── checkpoint/      # Checkpoint 基类与序列化
 │       ├── prebuilt/        # create_react_agent 等开箱模板
