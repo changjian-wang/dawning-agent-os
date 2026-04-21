@@ -18,6 +18,8 @@ status: active
 > 3. 哪些模块对应 Dawning 的哪一层？
 >
 > 细节模块源码见 `02..N-*`。本文给"地图"。
+>
+> **前置阅读**：如果你对"channel / 版本号 / BSP / 激活判定"这些词陌生，先看 [[../../concepts/dataflow-channel-version]]，再回来读本文。
 
 ---
 
