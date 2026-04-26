@@ -354,7 +354,7 @@ flowchart LR
 | `func/` (Functional API) | Layer 6 | `ISkillDsl` | 提供 decorator 风格构图 |
 | `checkpoint-postgres` 等 | Layer 2 / Layer 5 持久化 | 适配器 | Dawning.Workflow.Postgres 参考 |
 
-完整映射表见后续 [[../cross-module-comparison/checkpoint-impl.zh-CN]] 与 [[../cross-module-comparison/state-model.zh-CN]]。
+完整映射表见 [[../cross-module-comparison]]（按 §State / §Checkpoint 章节）。
 
 ---
 
@@ -381,16 +381,3 @@ flowchart LR
 - [[../../concepts/state-persistence.zh-CN]] — 状态持久化综述
 - Pregel 论文：<https://research.google/pubs/pregel-a-system-for-large-scale-graph-processing/>
 - 官方 Conceptual Guide：<https://langchain-ai.github.io/langgraph/concepts/low_level/>
-
----
-
-## 交叉引用 <!-- XREF-STUB -->
-
-<!-- TODO 列出 2-5 个最相关的 wiki 页，每个一句话说明为何相关 -->
-
-- [[TODO-相关页面]] — _TODO 为什么相关_
-
-## 来源 <!-- SRC-STUB -->
-
-<!-- TODO 补充原始来源（raw/ 路径或外链） -->
-- _TODO_

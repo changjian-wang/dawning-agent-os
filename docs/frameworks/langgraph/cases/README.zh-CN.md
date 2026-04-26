@@ -53,19 +53,19 @@ sources: []
 ## 3. 阅读建议
 
 - 新人：先读 [[klarna-customer-support]]（商业客服最经典）+ [[open-deep-research]]（开源可复刻）
-- 架构师：读 [[linkedin-sql-agent]]（企业内部 + 数据平台结合）
-- 运维 / SRE：读 [[uber-devops-agent]]（生产 SLO / 回滚 / HITL）
+- 架构师：读 [[linkedin-sql-agent]]⚠️待写（企业内部 + 数据平台结合）
+- 运维 / SRE：读 [[uber-devops-agent]]⚠️待写（生产 SLO / 回滚 / HITL）
 - 产品经理：读 [[replit-agent]]（端到端产品形态）
 
 ---
 
 ## 4. 与横向对比的关系
 
-如果你想看"同一场景用不同框架怎么做"，请去：
+如果你想看“同一场景用不同框架怎么做”，请去（均为规划中子页）：
 
-- [[../../cross-case-comparison/customer-support-agents.zh-CN]]（客服 Agent：LangGraph vs others）
-- [[../../cross-case-comparison/coding-agents.zh-CN]]（Replit vs Cursor vs Devin）
-- [[../../cross-case-comparison/research-agents.zh-CN]]（Deep Research 流派对比）
+- [[../../cross-case-comparison/customer-support-agents.zh-CN]]⚠️待写（客服 Agent：LangGraph vs others）
+- [[../../cross-case-comparison/coding-agents.zh-CN]]⚠️待写（Replit vs Cursor vs Devin）
+- [[../../cross-case-comparison/research-agents.zh-CN]]⚠️待写（Deep Research 流派对比）
 
 ---
 

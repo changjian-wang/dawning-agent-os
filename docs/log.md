@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-04-26] lint | langgraph 阅读前深度优化
+
+- 范围：`docs/frameworks/langgraph/`（即将精读，质量优先）
+- 删除 21 页冗余 stub（XREF-STUB / SRC-STUB）—— 这些页面本身已有 `## 下一步` / `## 阅读顺序` / `## 延伸阅读` / `## 参考` 等精心编写的尾部
+- 修复 5 个真死链：3 个目录式 wikilink 改为指向 README，1 个改指向已存在的 `cross-module-comparison.zh-CN.md`，cases/README 4 个待写链接补 ⚠️待写 标记
+- 在 langgraph/README 顶部加阅读约定段落，告知读者 `(待写) / ⏳ / 规划中` 是设计性占位
+- 新增工具 `scripts/wiki_dead_links.py`，区分"真死链 / 已知占位"
+- 升级 `scripts/wiki_readability.py`：行为判定（wikilink ≥ 5 视为有交叉引用，外链 ≥ 3 视为有来源）替代僵硬章节名匹配
+- 终态：langgraph 内 0 真死链 / 9 已知占位；全场域 L3 5 项均为可选优化
+
+---
+
 ## [2026-04-26] lint | 可读性脚手架 + 阈值调校
 
 - 工具：`scripts/wiki_readability.py`（审计）+ `scripts/wiki_readability_fix.py`（脚手架）

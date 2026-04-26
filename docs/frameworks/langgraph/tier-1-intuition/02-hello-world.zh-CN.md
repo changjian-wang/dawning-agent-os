@@ -346,16 +346,3 @@ print(app.invoke({"question": "简单介绍 Pregel 算法"}))
 
 - 下一篇 → [[03-mental-model]] 把"图 / state / channel / checkpoint" 4 个核心概念彻底讲透
 - 急着看源码 → [[../tier-3-internals/02-state-graph]]
-
----
-
-## 交叉引用 <!-- XREF-STUB -->
-
-<!-- TODO 列出 2-5 个最相关的 wiki 页，每个一句话说明为何相关 -->
-
-- [[TODO-相关页面]] — _TODO 为什么相关_
-
-## 来源 <!-- SRC-STUB -->
-
-<!-- TODO 补充原始来源（raw/ 路径或外链） -->
-- _TODO_

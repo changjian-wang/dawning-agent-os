@@ -448,19 +448,6 @@ END
 
 - **想看更大图 / 真实业务骨架** → [[../tier-2-architecture/00-overview]]（框架全景）
 - **想看完整模块调用关系** → [[../tier-2-architecture/01-architecture]]
-- **想看源码怎么写的** → [[../tier-3-internals/]] 按需读
-- **想看真实企业案例** → [[../cases/]]（klarna / open-deep-research / replit-agent / linkedin-hr-agent）
+- **想看源码怎么写的** → tier-3-internals/ 目录按需读
+- **想看真实企业案例** → [[../cases/README.zh-CN|cases/]]（klarna / open-deep-research / replit-agent / linkedin-hr-agent）
 - **想看 LangGraph vs Dawning 映射** → [[../cross-module-comparison]]
-
----
-
-## 交叉引用 <!-- XREF-STUB -->
-
-<!-- TODO 列出 2-5 个最相关的 wiki 页，每个一句话说明为何相关 -->
-
-- [[TODO-相关页面]] — _TODO 为什么相关_
-
-## 来源 <!-- SRC-STUB -->
-
-<!-- TODO 补充原始来源（raw/ 路径或外链） -->
-- _TODO_

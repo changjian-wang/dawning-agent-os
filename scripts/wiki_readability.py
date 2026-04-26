@@ -74,15 +74,22 @@ def audit(p: Path):
         if not has_summary:
             issues.append(("L2-缺 TL;DR", "首屏无 > 摘要块"))
 
-    # Cross-ref section
-    has_xref = any(re.match(r"^##+\s+(交叉引用|相关|See also|Related)", l) for l in lines)
+    # Cross-ref section — accept curated equivalents OR sufficient inline wikilinks
+    xref_pat = re.compile(r"^##+\s+(?:\d+\.\s*)?(交叉引用|相关|下一步|阅读顺序|See also|Related)")
+    has_xref_section = any(xref_pat.match(l) for l in lines)
+    wikilink_count = sum(1 for l in lines if not code_mask[lines.index(l) if False else 0])  # placeholder
+    wikilink_count = sum(len(re.findall(r"\[\[[^\]]+\]\]", l)) for i, l in enumerate(lines) if not code_mask[i])
+    has_xref = has_xref_section or wikilink_count >= 5
     if not has_xref and nl > 200:
-        issues.append(("L3-缺交叉引用", "长页未含 ## 交叉引用"))
+        issues.append(("L3-缺交叉引用", f"长页 wikilink 仅 {wikilink_count} 个，且无 ## 交叉引用 / 下一步"))
 
-    # Sources section (only require for non-readings; readings tend to embed inline)
-    has_src = any(re.match(r"^##+\s+(来源|参考|References|Sources)", l) for l in lines)
+    # Sources section — accept "延伸阅读 / 参考 / 来源 / References" OR external links count
+    src_pat = re.compile(r"^##+\s+(?:\d+\.\s*)?(来源|参考|延伸阅读|参考资料|References|Sources)")
+    has_src_section = any(src_pat.match(l) for l in lines)
+    extlink_count = sum(len(re.findall(r"https?://", l)) for i, l in enumerate(lines) if not code_mask[i])
+    has_src = has_src_section or extlink_count >= 3
     if not has_src and nl > 200:
-        issues.append(("L3-缺来源章节", "长页未含 ## 来源/参考"))
+        issues.append(("L3-缺来源章节", f"长页外链仅 {extlink_count} 个，且无 ## 来源 / 参考 / 延伸阅读"))
 
     # H4+ depth
     if len(h4plus) > 5:

@@ -424,7 +424,7 @@ def reflect_or_finish(state: SectionState):
 |-------|-------|------|
 | L1 | 在本地跑一遍，调一个主题 | 仓库 README |
 | L2 | 改 supervisor prompt，加章节约束 | 源码 `src/open_deep_research/prompts.py` |
-| L3 | 把 search backend 换成 Dawning.Tools 实现 | [[../../../entities/frameworks/]] + 自写 adapter |
+| L3 | 把 search backend 换成 Dawning.Tools 实现 | 参考 entities/frameworks/ 下各框架页 + 自写 adapter |
 | L4 | 用 Dawning 重写顶层 supervisor，对齐两个框架 | [[../../cross-module-comparison/multi-agent-orchestration]]（待写） |
 
 ---
@@ -438,16 +438,3 @@ def reflect_or_finish(state: SectionState):
 - [[klarna-customer-support.zh-CN]]
 - [[../03-pregel-runtime]] §8 Send/Command
 - [[../09-subgraph-functional-api]]
-
----
-
-## 交叉引用 <!-- XREF-STUB -->
-
-<!-- TODO 列出 2-5 个最相关的 wiki 页，每个一句话说明为何相关 -->
-
-- [[TODO-相关页面]] — _TODO 为什么相关_
-
-## 来源 <!-- SRC-STUB -->
-
-<!-- TODO 补充原始来源（raw/ 路径或外链） -->
-- _TODO_
