@@ -1,3 +1,16 @@
+---
+name: wiki-query
+description: |
+  Use when: 用户对 wiki 内容提问、要求综合 / 对比 / 综述 已有页面
+  Don't use when:
+    - 提供了新原始资料要归档（→ wiki-ingest）
+    - 要求修复 wiki 健康问题（→ wiki-lint）
+    - 问题与 wiki 内容无关
+  Inputs: 用户问题或综合需求
+  Outputs: 带引用的回答；如有持久价值，回写到 synthesis/comparisons/decisions 或更新现有页
+  Success criteria: 所有判断附引用、已评估回写价值、docs/log.md 追加 query 条目、未修改 raw/
+---
+
 # wiki-query
 
 ## Use when

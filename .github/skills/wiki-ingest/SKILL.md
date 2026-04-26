@@ -1,3 +1,15 @@
+---
+name: wiki-ingest
+description: |
+  Use when: 用户在 docs/raw/ 新增原始资料（论文/博文/repo/官方文档）需要摇入为 wiki 页面
+  Don't use when:
+    - 仅回答已有问题（→ wiki-query）
+    - 仅做健康检查（→ wiki-lint）
+    - 需要修改 docs/raw/（禁止）
+  Inputs: docs/raw/ 下的新文件路径，可选指定要点
+  Outputs: 新建/更新的 wiki 页面、更新的 docs/index.md、追加的 docs/log.md 条目
+  Success criteria: 未修改 raw/、frontmatter 完整、所有声明可追溯、index 与 log 均已更新
+---
 # wiki-ingest
 
 ## Use when

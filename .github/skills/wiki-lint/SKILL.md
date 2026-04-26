@@ -1,3 +1,16 @@
+---
+name: wiki-lint
+description: |
+  Use when: 用户请求健康检查、可读性体检、矛盾检测、孤立页扫描、frontmatter 校验、index 漂移检测
+  Don't use when:
+    - 提供新资料要归档（→ wiki-ingest）
+    - 要回答问题（→ wiki-query）
+    - 仅做单页编辑无系统性检查需求
+  Inputs: 检查范围（全量 / 子目录 / 指定标签）
+  Outputs: 结构化报告（阻断/重要/提示三档）、可选修复、docs/log.md 追加 lint 条目
+  Success criteria: 未触碰 raw/、输出分档报告、修复后 updated 刷新、物理删除 0 个页
+---
+
 # wiki-lint
 
 ## Use when
