@@ -50,15 +50,17 @@ def audit(p: Path):
     h4plus = [i for i,l in enumerate(lines) if not code_mask[i] and re.match(r"^####+\s+", l)]
     h1 = [i for i,l in enumerate(lines) if not code_mask[i] and re.match(r"^#\s+", l)]
 
-    if nl > 700:
-        issues.append(("L1-超长", f"{nl} 行 (>700)"))
-    elif nl > 500:
-        issues.append(("L2-偏长", f"{nl} 行 (>500)"))
+    # 阈值说明:wiki 页本就承担综合/对比职能,长页是合理产物。
+    # 阈值定在"明显过长、TOC 也救不回来"的程度,而非"看起来长"。
+    if nl > 900:
+        issues.append(("L1-超长", f"{nl} 行 (>900) — 建议做内容索引化"))
+    elif nl > 700:
+        issues.append(("L2-偏长", f"{nl} 行 (>700)"))
 
-    if len(h2) > 15:
-        issues.append(("L1-H2 过多", f"{len(h2)} 个 (>15) — 建议拆分"))
-    elif len(h2) > 10:
-        issues.append(("L2-H2 偏多", f"{len(h2)} 个 (>10)"))
+    if len(h2) > 22:
+        issues.append(("L1-H2 过多", f"{len(h2)} 个 (>22) — 建议拆分"))
+    elif len(h2) > 16:
+        issues.append(("L2-H2 偏多", f"{len(h2)} 个 (>16)"))
 
     if len(h1) == 0:
         issues.append(("L1-缺 H1", "无 # 标题"))
