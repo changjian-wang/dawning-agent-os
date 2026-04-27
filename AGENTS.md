@@ -12,22 +12,20 @@
 ## 写操作前的强制阅读顺序
 
 1. [`docs/PURPOSE.md`](./docs/PURPOSE.md) — 确认本次操作涉及的内容是否在 wiki 收录范围内。**不在范围则停止并告诉人类。**
-2. [`docs/SCHEMA.md`](./docs/SCHEMA.md) — 结构契约：目录、页面类型、frontmatter、模板、流程、红线。
+2. [`docs/SCHEMA.md`](./docs/SCHEMA.md) — 结构契约：目录、页面类型、front matter、模板、流程、红线。
 
 如果上述任一文件与本文件冲突，以那两份为准。本文件只负责把你导向那两份。
 
-## 硬红线（与 `docs/SCHEMA.md §10` 一致；详细规则在 SCHEMA）
+## 硬红线入口
 
-- 永远不修改 `docs/raw/` 下的任何文件。
-- 永远不写无法追溯到 `sources` 的事实性判断。
-- 永远不创建无完整 frontmatter 的 wiki 页。
-- 永远不发明新的 `type` / `subtype` / `tag`，须先改 `docs/SCHEMA.md`。
-- 永远不删除 wiki 页；用 `status: archived` + `archived_reason` 替代。
-- 永远不新增 `docs/` 顶层目录或 `docs/pages/` 下的 type 目录，须先改 `docs/SCHEMA.md`。
-- 不收录 wiki 收录范围之外的资料。
-- 不手动维护 `docs/overview.md` / `docs/log.md`，它们是脚本派生物。
-- 同一主题不得出现两页 `canonical: true`。
-- 不删除页面模板规定的必备 H2 章节。
+> 本节只保留薄摘要；完整红线以 `docs/SCHEMA.md §10` 为准。
+
+- 写操作前先读 `docs/PURPOSE.md` 与 `docs/SCHEMA.md`。
+- 不修改 `docs/raw/`，不手维 `docs/overview.md` / `docs/log.md`。
+- 不写无法追溯到 `sources` 的事实性判断；查不到当前结论时返回「未收录」，不要硬编。
+- 不创建违反 SCHEMA 契约的页面；类型、枚举、目录、模板、生命周期、拓扑必须按 SCHEMA。
+- 不物理删除 wiki 页；退役走 `status: archived` + `archived_reason`，取代关系走 `supersedes`。
+- 不确定时停下来问人类。
 
 ## 不在范围内的事
 
