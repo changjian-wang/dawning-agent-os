@@ -1,275 +1,374 @@
-# SCHEMA.md — Dawning Agent OS Wiki 模式定义
+# SCHEMA.md — Dawning Agent OS Wiki 结构契约
 
-> 本文件是 LLM Wiki 的核心配置文件。它定义了 wiki 的结构约定、工作流规则和维护标准。
-> LLM 在操作 wiki 时必须遵循此 Schema。人类和 LLM 共同演化此文件。
->
-> **术语变更**（2026-04-17）：项目从 "Agent Framework" 更名为 "Agent OS"。
-> 命名空间从 `Dawning.AgentFramework.*` 变更为 `Dawning.AgentOS.*`。
+> 本文件是 LLM-Wiki 的**结构契约**：定义目录、页面类型、frontmatter、模板、流程与红线。
+> **方向意图（为什么、收录范围）由 [PURPOSE.md](./PURPOSE.md) 定义；本文件不重复。**
+> Agent 在执行任何写操作前，必须先读 PURPOSE.md 与本文件。
 
 ---
 
-## 1. 架构总览
+## 1. 设计原则
 
-```
-docs/                              # Obsidian 知识库根目录
-├── SCHEMA.md                      # ⚙️  本文件 — Wiki 模式定义
-├── index.md                       # 📋  内容索引（LLM 每次 Ingest 更新）
-├── log.md                         # 📅  操作日志（追加式）
-│
-├── raw/                           # 🔒 原始资料（不可变）
-│   ├── papers/                    #    arXiv 论文、学术论文
-│   ├── articles/                  #    技术博文、Gist、演讲
-│   ├── repos/                     #    GitHub 项目分析笔记
-│   ├── official/                  #    官方文档摘录
-│   ├── meetings/                  #    会议/讨论记录
-│   └── assets/                    #    图片、图表等附件
-│
-├── entities/                      # 📄 实体页（具名事物）
-│   └── frameworks/                #    Agent 框架实体页
-│
-├── concepts/                      # 💡 概念页（模式、原理、技术）
-│
-├── comparisons/                   # ⚖️  对比分析
-│
-├── decisions/                     # 🏗️  架构决策记录（ADR）
-│
-├── synthesis/                     # 🔬 综合分析（跨源交叉洞察）
-│
-├── readings/                      # 📖 阅读笔记（按源逐章节解读）
-│   └── frameworks/                #    框架文档/源码精读
-│
-├── frameworks/                    # 🧪 框架深读体系（tier 化精读）
-│   └── {framework}/
-│       ├── tier-1-intuition/      #    直觉层
-│       ├── tier-2-architecture/   #    架构层
-│       ├── tier-3-internals/      #    源码层
-│       └── cases/                 #    案例分析
-│
-└── images/                        # 🖼️  图片资源
+1. 单一真相源：规则只在本文件，agent 入口文件只做路由，不复述。
+2. 类型尽量少；新建页面前先尝试落入既有类型。
+3. 同一主题恰好一处权威页（`canonical`）。
+4. 所有事实性判断可追溯到 `raw/`。
+5. 优先更新已有页面，而不是持续新建。
+6. `overview.md` `log.md` 是派生物，不是启动前提；自动化前不存在也合法。
+
+## 2. 目录结构
+
+```text
+docs/
+├── PURPOSE.md              # 方向意图（为什么、收录范围）
+├── SCHEMA.md               # 本文件：结构契约
+├── overview.md             # 派生物：当前快照（自动生成；无脚本时缺席）
+├── raw/                    # 原始资料（不可变，LLM 只读）
+│   ├── papers/             # 论文 / arXiv
+│   ├── articles/           # 博文 / 演讲 / Gist
+│   ├── repos/              # 仓库分析笔记
+│   ├── official/           # 官方文档摘录
+│   ├── meetings/           # 会议 / 讨论记录（遗留，新资料尽量不进此目录）
+│   └── assets/             # raw 引用的图片
+├── pages/                  # Wiki 编译产物
+│   ├── hubs/               # 导航页（Map of Content）
+│   ├── entities/           # 具名对象
+│   ├── concepts/           # 概念解释
+│   ├── comparisons/        # 横向对比 / 选型分析
+│   ├── rules/              # 强制 / 推荐 / 参考规则
+│   └── adrs/               # 架构决策记录
+└── images/                 # wiki 页面引用的图片
 ```
 
-## 2. 层级规则
+### 2.1 增长规则
 
-### 2.1 Raw Sources（原始资料层）
+- `pages/` 下默认扁平。
+- 某一目录活跃页面 > 20 或同类稳定页面 ≥ 5 时，才允许加一层子目录。
+- 不允许新增顶层目录，须先改本 SCHEMA。
+- 不允许恢复旧版 `synthesis/` `readings/` `frameworks/{x}/tier-N/` 等结构。
 
-- **路径**：`raw/{category}/{filename}.md`
-- **所有者**：人类（LLM 只读，永不修改）
-- **可变性**：不可变。添加后不修改、不删除
-- **命名**：`{来源简称}.md`，例如 `memento-skills-2603.18743.md`
-- **用途**：真实来源。Wiki 中的所有声明都应可追溯到 raw 层
+## 3. 页面类型
 
-### 2.2 Wiki Pages（编译产物层）
+共 6 种主类型，与目录一一对应：
 
-Wiki 页面分为六个**主类型**，路径与 type 字段一一对应：
+| type | 路径 | 适用 | 不适用 |
+|---|---|---|---|
+| `hub` | `pages/hubs/` | 主题入口、阅读顺序、范围划分 | 长篇论证 |
+| `entity` | `pages/entities/` | 框架、协议、工具、论文、仓库等具名对象 | 跨对象比较、概念解释 |
+| `concept` | `pages/concepts/` | 概念、模式、方法论的解释 | 横向选型 |
+| `comparison` | `pages/comparisons/` | 多对象横向对比 / 选型分析 | 单对象介绍 |
+| `rule` | `pages/rules/` | 强制 / 推荐 / 参考的硬规则 | 可被推翻的架构选择 |
+| `adr` | `pages/adrs/` | 架构决策记录（可被新决策 supersede） | 不可违反的红线 |
 
-| 主类型 type | 路径 | 说明 | 示例 |
-|------|------|------|------|
-| **entity** | `entities/{subcategory}/` | 具名事物的专属页面 | `entities/frameworks/semantic-kernel.md` |
-| **concept** | `concepts/` | 模式、原理、技术概念 | `concepts/memento-skills.md` |
-| **comparison** | `comparisons/` | 多实体对比分析 | `comparisons/agent-framework-landscape.md` |
-| **decision** | `decisions/` | 架构决策记录（ADR） | `decisions/roadmap.md` |
-| **synthesis** | `synthesis/` 或 `frameworks/{x}/` | 跨源/跨章节综合分析、深读产物 | `frameworks/langgraph/tier-2-architecture/01-architecture.md` |
-| **reading** | `readings/{source}/` | 单一来源的章节级阅读笔记 | `readings/frameworks/maf/01-abstractions.md` |
+### 3.1 路由口诀
 
-**subtype（可选）** — 用于在主类型内进一步标注语义，仅做展示与查询，不参与目录约束：
+- 具名对象 → `entity`
+- 解释为什么 / 怎么理解 → `concept`
+- 多对象横向选型 → `comparison`
+- 不可违反的硬规则 → `rule`
+- 可被推翻的架构选择 → `adr`
+- 只是导航 → `hub`
+- 拿不准 → 不要新建页面，先和人类确认；禁止发明新类型
 
-| 主类型 | 推荐 subtype 集合 |
+### 3.2 可选 subtype
+
+`subtype` 仅用于轻量语义标注，不参与目录约束。新增 subtype 须先改本 SCHEMA。
+
+| type | 允许的 subtype |
 |---|---|
-| `synthesis` | `intuition`, `architecture`, `internals`, `case-study`, `cross-comparison`, `overview` |
-| `reading` | `chapter`, `module`, `overview` |
-| `entity` | `framework`, `tool`, `protocol`, `paper` |
+| `hub` | `map` |
+| `entity` | `framework`, `protocol`, `tool`, `paper`, `repo` |
+| `concept` | `pattern`, `methodology`, `theory`, `workflow` |
+| `comparison` | `landscape`, `selection`, `tradeoff` |
+| `rule` | `convention`, `style`, `process` |
+| `adr` | `architecture`, `tooling`, `scope` |
 
-- **所有者**：LLM（人类阅读、LLM 编写和维护）
-- **可变性**：持续更新。每次 Ingest 可能触及多个页面
-- **目录约束**：主类型与顶层目录必须对应；`synthesis` 例外，可落在 `synthesis/` 或 `frameworks/{name}/` 下
-- **README 白名单**：每个目录可以有 `README.md` / `README.zh-CN.md` 作为目录索引页，frontmatter 仍然必填，type 取该目录主类型
+## 4. Frontmatter 规范
 
-## 3. 页面格式
-
-### 3.1 YAML Frontmatter（必填）
-
-每个 wiki 页面必须包含 YAML frontmatter：
+每个 wiki 页面必须包含完整 frontmatter：
 
 ```yaml
 ---
 title: 页面标题
-type: entity | concept | comparison | decision | synthesis | reading
-subtype: intuition | architecture | internals | case-study | cross-comparison | overview | chapter | module | framework | tool | protocol | paper   # 可选
-tags: [tag1, tag2]
-sources: [raw/papers/xxx.md, raw/articles/yyy.md]
-created: 2026-04-07
-updated: 2026-04-07
-status: draft | active | stale | archived
+type: hub | entity | concept | comparison | rule | adr
+subtype: framework              # 可选；按 type 选择，不适用可省略
+canonical: true                  # 同主题最多一页 true
+summary: 一句话摘要
+tags: [agent, memory]            # 受控词表（见 §5）
+sources: [raw/papers/example.md] # 来源
+created: 2026-04-27
+updated: 2026-04-27
+verified_at: 2026-04-27          # 最近一次确认事实仍准确
+freshness: evergreen             # evergreen | volatile
+status: draft                    # draft | active | stale | archived
+archived_reason: ""              # status=archived 时必填
+supersedes: []                   # 可选，本页取代的旧页（路径）
+related: []                      # 可选，强相关页面（路径）
+part_of: []                      # 可选，所属 hub 或父概念（路径）
 ---
 ```
 
-| 字段 | 必填 | 说明 |
-|------|------|------|
-| `title` | ✅ | 页面标题 |
-| `type` | ✅ | 主类型（六选一）|
-| `subtype` | ⬜ | 子类型（可选，仅用于展示/查询）|
-| `tags` | ✅ | 分类标签（用于 Dataview 查询） |
-| `sources` | ✅ | 引用的原始资料路径列表（可为空数组 `[]`，但字段必填）|
-| `created` | ✅ | 创建日期 |
-| `updated` | ✅ | 最后更新日期 |
-| `status` | ✅ | 页面状态 |
+### 4.1 字段表
 
-### 3.2 正文结构
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `title` | 是 | 页面标题 |
+| `type` | 是 | 6 种主类型之一 |
+| `subtype` | 否 | 受控枚举 |
+| `canonical` | 是 | `true` / `false`；同主题最多一页 `true` |
+| `summary` | 是 | 一句话页面意图 |
+| `tags` | 是 | 受控词表，至少 1 个 |
+| `sources` | 是 | 来源路径数组；`entity/concept/comparison` 必须非空 |
+| `created` | 是 | 创建日期 |
+| `updated` | 是 | 最近更新日期 |
+| `verified_at` | 是 | 最近一次确认仍准确的日期 |
+| `freshness` | 是 | `evergreen`（长期稳定）或 `volatile`（需定期复查） |
+| `status` | 是 | `draft / active / stale / archived` |
+| `archived_reason` | 条件 | `status: archived` 时必填 |
+| `supersedes` | 否 | 取代关系列表（路径） |
+| `related` | 否 | 相关页面列表（路径） |
+| `part_of` | 否 | 所属父页（路径） |
+
+**链接字段格式约定**：`supersedes / related / part_of` 中的元素一律写**相对 `docs/` 的路径**，例如 `pages/adrs/options-over-elaboration.md`。不写 wikilink、不写裸标题、不写绝对路径。
+
+### 4.2 类型专属字段
+
+`type: rule` 必须额外包含：
+
+```yaml
+level: 强制 | 推荐 | 参考
+```
+
+`type: adr` 必须额外包含：
+
+```yaml
+adr_status: proposed | accepted | superseded
+adr_date: 2026-04-27          # 决策日期（首次 accept 的日期；superseded 后保留原始日期）
+adr_revisit_when: ""          # 触发复议的条件，可为空字符串；非空时 lint 会校验是否为可观察的事件而非空话
+```
+
+### 4.3 sources 规则
+
+- `entity / concept / comparison`：`sources` 必须非空。
+- `hub / rule / adr`：`sources` 可为空数组 `[]`。
+- 路径相对 `docs/` 写：`raw/papers/example.md`。
+- 页面中无法回溯到 `sources` 的事实性判断必须删除或补来源。
+
+## 5. 受控 tag 词表
+
+新增 tag 必须先修改本节。当前允许的 tag：
+
+| 维度 | 标签 |
+|---|---|
+| 领域 | `agent`, `memory`, `skill`, `orchestration`, `llm-provider`, `rag`, `eval`, `observability`, `security`, `protocol` |
+| 形态 | `framework`, `pattern`, `paper`, `repo`, `tool`, `methodology` |
+| 来源风格 | `research`, `engineering`, `vendor-doc` |
+| 产品哲学 | `product-philosophy`, `butler-positioning`, `interaction-design`, `subject-object-boundary`, `memory-design`, `proactivity`, `privacy` |
+| wiki 自身 | `meta`, `convention`, `process` |
+
+**产品哲学维度何时使用**：当页面承载的是"本产品为何是这样"的判断（管家定位、选择题优先、主客体边界、长期记忆作为核心等）时贴此维度的 tag。研究/通用领域知识不贴此维度。
+
+## 6. 正文模板
+
+### 6.1 Hub
 
 ```markdown
 # {标题}
 
-> 一句话摘要。
+> {summary}
 
-## 核心内容
-（主体内容）
+## 范围
 
-## 交叉引用
-- [[相关页面1]]
-- [[相关页面2]]
+## 从这里开始
+
+## 相关页面
+```
+
+### 6.2 Entity
+
+```markdown
+# {标题}
+
+> {summary}
+
+## 它是什么
+
+## 为什么重要
+
+## 同义名
+
+## 关键机制
+
+## 局限与边界
+
+## 相关页面
 
 ## 来源
-- [来源1](../raw/papers/xxx.md)
-- [来源2](../raw/articles/yyy.md)
 ```
 
-### 3.3 链接约定
+### 6.3 Concept
 
-- **Wiki 内部链接**：使用 Obsidian wikilink `[[页面名]]` 或 `[[路径/页面名|显示文本]]`
-- **原始资料引用**：使用相对路径 `[标题](../raw/category/file.md)`
-- **外部链接**：使用完整 URL `[标题](https://...)`
-
-## 4. 操作工作流
-
-### 4.1 Ingest（摄入新资料）
-
-触发条件：人类将新资料放入 `raw/` 目录。
-
-流程：
-
-1. 读取原始资料
-2. 与人类讨论关键要点
-3. 在对应类别创建/更新 wiki 页面（可能触及多个页面）
-4. 更新 `index.md`（新增/修改条目）
-5. 追加 `log.md` 条目
-
-日志格式：
 ```markdown
-## [2026-04-07] ingest | {资料标题}
-- 来源：`raw/{category}/{file}.md`
-- 新建页面：{列表}
-- 更新页面：{列表}
-- 关键要点：{1-3 句话}
+# {标题}
+
+> {summary}
+
+## 问题
+
+## 简短结论
+
+## 分析
+
+## 局限
+
+## 相关页面
+
+## 来源
 ```
 
-### 4.2 Query（查询）
+### 6.4 Comparison（美团技术博客风格）
 
-触发条件：人类提出问题。
-
-流程：
-
-1. 读取 `index.md` 或搜索定位相关页面
-2. 深入阅读相关页面
-3. 综合回答，附引用
-4. 若回答有持久价值 → 回写为新 wiki 页面或更新现有页面
-5. 追加 `log.md` 条目
-
-日志格式：
 ```markdown
-## [2026-04-07] query | {问题摘要}
-- 查阅页面：{列表}
-- 回答要点：{1-3 句话}
-- 回写页面：{列表，若有}
+# {标题}
+
+> {summary}
+
+## 背景
+
+## 候选方案
+
+## 评估维度（矩阵）
+
+| 维度 | 方案 A | 方案 B | 方案 C |
+|---|---|---|---|
+
+## 选型与理由
+
+## 落地数据 / 踩坑
+
+## 相关页面
+
+## 来源
 ```
 
-### 4.3 Lint（健康检查）
+### 6.5 Rule（阿里 P3C 风格）
 
-触发条件：人类请求或定期执行。
-
-检查项：
-
-- [ ] 页面间矛盾（新资料推翻旧结论）
-- [ ] 过时声明（已被新资料取代）
-- [ ] 孤立页面（无入站链接）
-- [ ] 重要概念缺少独立页面
-- [ ] 缺失交叉引用
-- [ ] frontmatter 完整性（必填字段缺失）
-- [ ] 状态为 `stale` 的页面需复查
-
-日志格式：
 ```markdown
-## [2026-04-07] lint | 健康检查
-- 检查页面数：{n}
-- 发现问题：{列表}
-- 修复：{列表}
-- 待办：{列表}
+# {标题}
+
+> level: 强制 | 推荐 | 参考
+> {summary}
+
+## 规则
+
+## 正例
+
+## 反例
+
+## 例外
+
+## 相关页面
 ```
 
-## 5. 命名约定
+### 6.6 ADR（Nygard 风格）
 
-| 类型 | 命名规则 | 示例 |
-|------|---------|------|
-| 文件名 | `kebab-case.md` | `semantic-kernel.md` |
-| 中文版 | `{name}.zh-CN.md` | `semantic-kernel.zh-CN.md` |
-| 原始资料 | `{来源简称}.md` | `karpathy-llm-wiki.md` |
-| 图片 | `{相关页面}-{描述}.svg` | `three-plane-architecture-overview.svg` |
+```markdown
+# {标题}
 
-## 6. 标签分类法
+> adr_status: proposed | accepted | superseded
+> adr_date: YYYY-MM-DD
+> adr_revisit_when: {可观察的复议触发条件，可为空}
+> {summary}
 
-wiki 使用以下标签分类体系（用于 Obsidian Dataview 查询）：
+## 背景
 
-### 领域标签
-- `#agent` — Agent 相关
-- `#memory` — 记忆系统
-- `#skill` — 技能系统
-- `#orchestration` — 编排协作
-- `#llm-provider` — LLM 提供者
-- `#observability` — 可观测性
-- `#security` — 安全治理
-- `#eval` — 评测评估
+## 备选方案
 
-### 类型标签
-- `#framework` — Agent 框架
-- `#pattern` — 设计模式
-- `#protocol` — 通信协议
-- `#adr` — 架构决策记录
-- `#research` — 研究参考
+## 被否决方案与理由
 
-### 状态标签
-- `#draft` — 草稿
-- `#active` — 活跃
-- `#stale` — 可能过时
+## 决策
 
-## 7. 双语约定
+## 影响
 
-- 每个 wiki 页面优先写中文版（`.zh-CN.md`），**英文版按需提供，不强制**
-- **双语存在性规则**：`{name}.zh-CN.md` 单独存在 = 仅中文版（合法）；`{name}.md` 单独存在 = 仅英文版（合法）；两者并存时必须同步
-- 双语版本同步：更新一个时必须检查另一个是否需要同步更新
-- `index.md` 统一使用中文
-- `SCHEMA.md` 使用中文
-- 原始资料保持其原始语言
+## 复议触发条件
 
-## 8. 质量标准
+## 相关页面
+```
 
-### 必须遵循
-- ✅ 每页有完整 YAML frontmatter
-- ✅ 每个声明可追溯到 `raw/` 层资料
-- ✅ 交叉引用使用 wikilink
-- ✅ Ingest 后更新 `index.md` 和 `log.md`
+## 7. 规模与拓扑约束
 
-### 禁止
-- ❌ 修改 `raw/` 目录下的文件
-- ❌ 无来源的声明（hallucination guard）
-- ❌ 创建无 frontmatter 的 wiki 页面
-- ❌ 删除 wiki 页面（用 `status: archived` 标记）
+- 单页规模由**内容**决定，不设硬字数上限；但当一级章节 > 8 个或单页同时讲多个主题时，必须拆分或转 hub。判断依据：一个反应式问题——"读者能否在 5 分钟内抓到这页的主张？"答案是"否"就要拆。
+- Hub 嵌套 ≤ **2 层**。
+- **恰好一个 root hub**：`pages/hubs/agent-os.md`。
+- 每个非 hub 页必须从至少一个 hub 或同类型页被链接到（无入站链接 = 孤岛）。
+- 同主题最多一页 `canonical: true`；其它页只能引用，不复述事实。
 
-## 9. 版本历史
+## 8. 工作流
+
+### 8.1 Ingest（摄入新资料）
+
+1. 读 `PURPOSE.md`，确认资料在收录范围内；不在范围则拒收。
+2. 确认资料已由人类或外部流程放入 `raw/{category}/`；agent 只读 `raw/`，不得修改。
+3. 先尝试更新现有页面；现有页面无法承接才新建。
+4. 新建页面前先确定 `type`，禁止发明新类型。
+5. 完整填写 frontmatter，特别是 `canonical / verified_at / freshness`。
+6. 至少从一个 hub 链接到新页（避免孤岛）。
+
+### 8.2 Query（查询）
+
+1. 先读 `PURPOSE.md` 与本 SCHEMA。
+2. 从 `pages/hubs/` 进入。
+3. 回答时引用具体页面与 `sources`。
+4. 仅当答案有持续复用价值时回写为页面或更新已有页。
+
+### 8.3 Lint（健康检查）
+
+周期性检查：
+
+- frontmatter 必填字段是否完整、字段值是否合法。
+- `tags` 是否全部在受控词表内。
+- `canonical` 是否唯一。
+- 孤岛页面（无入站链接）。
+- `freshness: volatile` 且 `verified_at` 超过 90 天的页面。
+- `status: archived` 页面是否仍被当作主入口引用。
+- `adr_status: superseded` 的页面是否被某个新 ADR 通过 `supersedes` 正确指向。
+- `supersedes / related / part_of` 中的路径是否真实存在。
+- 单页一级章节数是否超过 §7 的拓扑约束。
+
+## 9. 命名与语言
+
+- 文件名：`kebab-case.md`。
+- 页面标题：可中文。
+- 图片命名：`{page-slug}-{purpose}.{ext}`。
+- 默认中文优先；不再默认维护 `.md` / `.zh-CN.md` 双语 twin。
+- `raw/` 保留原始语言。
+
+## 10. 红线
+
+1. 不修改 `raw/` 下的任何文件。
+2. 不写无法追溯到 `sources` 的事实性判断。
+3. 不创建无 frontmatter 的页面。
+4. 不删除页面；用 `status: archived` + `archived_reason`。
+5. 不发明新的 `type`、`subtype` 或 `tag`，须先改本 SCHEMA。
+6. 不新增顶层目录，须先改本 SCHEMA。
+7. 不收录 [PURPOSE.md](./PURPOSE.md) §3 范围之外的资料。
+8. 不手维 `overview.md` 与 `log.md`，它们是派生物。
+
+## 11. 派生物
+
+以下文件不是启动前提，由脚本在自动化就绪后生成：
+
+- `overview.md`：全局快照（取代旧版手维 `index.md`）。
+- `log.md`：ingest / query / decision 的追加式日志。
+
+## 12. 版本历史
 
 | 版本 | 日期 | 关键变更 |
 |---|---|---|
-| 1.0 | 2026-04-07 | 初版：5 主类型、3 操作、frontmatter 规范 |
-| 1.1 | 2026-04-26 | 新增 `reading` 主类型；新增 `frameworks/` `readings/` `images/` 顶层目录；新增可选 `subtype` 字段；明确双语存在性规则；明确 `README.md` 白名单；`sources` 允许空数组但字段必填 |
+| 2.0 | 2026-04-27 | 重建版：最小可控模型，4 类页面 |
+| 3.0 | 2026-04-27 | 拆分 `topic` → `concept + comparison`、`decision` → `rule + adr`；新增 PURPOSE.md / canonical / verified_at / freshness / 受控 tag 词表 / 规模约束；明确 SCHEMA 为单一真相源 |
+| 3.1 | 2026-04-27 | ADR 增 `adr_date` / `adr_revisit_when`；tag 增"产品哲学"维度；`supersedes/related/part_of` 链接格式锚定为相对路径；§7 移除 2500 字硬上限改为内容驱动；§8.3 lint 增 superseded ADR 与链接存在性检查；§10 红线增"不收录 PURPOSE 范围外资料" |
+| 3.2 | 2026-04-27 | 修正红线重复；明确 ingest 时 agent 只读 `raw/`；同步 ADR 模板字段；Entity 模板增同义名；frontmatter 示例标注 `subtype` 为可选 |
 
 ---
 
-*Schema 版本：1.1 | 最后更新：2026-04-26 | 协作演化：人类 + LLM*
+*Schema 版本：3.2 | 最后更新：2026-04-27 | 协作演化：人类 + LLM*
