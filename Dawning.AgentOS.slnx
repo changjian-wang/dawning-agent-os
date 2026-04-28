@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dawning.AgentOS.Api/Dawning.AgentOS.Api.csproj" />
+    <Project Path="src/Dawning.AgentOS.Application/Dawning.AgentOS.Application.csproj" />
+    <Project Path="src/Dawning.AgentOS.Domain.Services/Dawning.AgentOS.Domain.Services.csproj" />
+    <Project Path="src/Dawning.AgentOS.Domain/Dawning.AgentOS.Domain.csproj" />
+    <Project Path="src/Dawning.AgentOS.Infrastructure/Dawning.AgentOS.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dawning.AgentOS.Api.Tests/Dawning.AgentOS.Api.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Application.Tests/Dawning.AgentOS.Application.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Architecture.Tests/Dawning.AgentOS.Architecture.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Domain.Services.Tests/Dawning.AgentOS.Domain.Services.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Domain.Tests/Dawning.AgentOS.Domain.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Infrastructure.Tests/Dawning.AgentOS.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

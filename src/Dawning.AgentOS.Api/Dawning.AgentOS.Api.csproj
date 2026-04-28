@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+    <ProjectReference Include="..\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
+    <ProjectReference Include="..\Dawning.AgentOS.Infrastructure\Dawning.AgentOS.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>

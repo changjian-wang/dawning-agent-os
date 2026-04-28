@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+TestResults/
+coverage/
+node_modules/
+dist/
+dist-electron/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
