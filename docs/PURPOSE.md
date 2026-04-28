@@ -31,7 +31,7 @@
 product_name: dawning-agent-os
 product_type: 通用个人 AI agent（"AI 管家"形态）
 repository_shape: 产品 monorepo + 内置 LLM-Wiki；docs/ 记录决策和知识，应用代码也进入本仓库
-mvp_technology_shape: 桌面 App + ASP.NET Core 本地后端；桌面壳采用 Electron，后端作为本地 agent runtime；第一版支持 Windows / macOS
+mvp_technology_shape: 桌面 App + ASP.NET Core 本地后端；桌面壳采用 Electron，UI 使用 Arco Design Vue + TypeScript + Vite，后端作为本地 agent runtime；第一版支持 Windows / macOS
 core_value: 让用户用最自然的语气说话，agent 负责听懂、推断、执行；用户不需要会写 prompt
 core_interaction_principle:
   name: options-over-elaboration（选择题优先于问答题）
@@ -74,7 +74,7 @@ key_constraint:
   memory_mvp_strategy: MVP 先做显式 Memory Ledger，所有关键记忆可解释、可查看、可编辑、可删除；向量 / embedding 检索后置
   interest_profile_strategy: 兴趣 / 标签不是永久静态偏好；MVP 以显式 tags 冷启动，并在 Memory Ledger 中用权重、置信度与时间衰减维护关注信号
   mvp_first_slice: 第一版采用聊天窗口 + agent inbox；输入限于显式材料与会话沉淀；动作先做总结 / 分类 / 打标签 / 候选整理方案；Memory Ledger 可查看 / 编辑 / 删除；兴趣权重先用简单可解释规则
-  mvp_desktop_stack: MVP 采用 Electron 桌面壳 + ASP.NET Core 本地后端；支持 Windows / macOS；第一版通信 localhost + 随机端口 + 启动 token；存储优先 SQLite，落在系统用户应用数据目录
+  mvp_desktop_stack: MVP 采用 Electron 桌面壳 + Arco Design Vue + TypeScript + Vite UI + ASP.NET Core 本地后端；支持 Windows / macOS；第一版通信 localhost + 随机端口 + 启动 token；存储默认 SQLite，落在系统用户应用数据目录；数据访问可参考 Dawning.ORM.Dapper 并由应用项目引用 Microsoft.Data.Sqlite，MySQL 暂作为未来可选适配
   mvp_default_llm_providers: 第一版默认接入 GPT 与 DeepSeek；保留 provider 抽象，不绑定单一供应商
   implementation_process: 永远方案先行；产品代码实现、目录生成、依赖引入和架构性修改前先给方案并获得确认
   proactivity_default: 默认不实时打断；普通主动性汇总成候选摘要，只有安全 / 截止时间 / 数据丢失 / 不可逆风险才允许立即打断
@@ -128,7 +128,7 @@ key_constraint:
   副场景与主场景共享 Memory 模块；是否能被复用是验证「通用层抽取」是否成立的依据（对应下方「通用层抽取（未来）」中的 framework 抽取问题）。
 - **最终形态（北极星，非承诺）**：长期收敛于「个人计算的中间层 / 个人 OS」——长期记忆与意图理解作为系统级能力，被沉淀为 memory / intent / permission 层。短期产品仍会主动接入文件、笔记、邮件、日历等外部数据源；长期目标是让其它 app 也能反向接入这层能力，而不是让 agent 永远停留在逐个 app 适配器集合。本条仅作为路径过滤器（每个架构决策反问「是否朝此方向收敛」），不进入 §4.1 thesis、不立刻驱动功能清单；待 MVP 跑通且 Memory 模块出现外部依赖后，再考虑升级为 §4.1 + 起草 ADR。
 - **仓库形态**：dawning-agent-os 不再只是 wiki-only 仓库，而是产品 monorepo + 内置 LLM-Wiki。docs/ 继续记录决策、知识和边界；产品代码也进入本仓库。详见 [ADR-015](pages/adrs/repository-shape-product-monorepo-with-wiki.md)。
-- **MVP 技术形态**：第一版采用桌面 App + ASP.NET Core 本地后端，桌面壳选 Electron，支持 Windows / macOS。Electron 负责窗口、托盘、快捷入口、聊天 / inbox / Memory Ledger UI；ASP.NET Core 负责本地 agent runtime、Memory、inbox、权限与动作分级。默认接入 GPT / DeepSeek，数据存储使用系统用户应用数据目录下的 SQLite。详见 [ADR-016](pages/adrs/mvp-desktop-stack-electron-aspnetcore.md)。
+- **MVP 技术形态**：第一版采用桌面 App + ASP.NET Core 本地后端，桌面壳选 Electron，UI 使用 Arco Design Vue + TypeScript + Vite，支持 Windows / macOS。Electron 负责窗口、托盘、快捷入口、聊天 / inbox / Memory Ledger UI；ASP.NET Core 负责本地 agent runtime、Memory、inbox、权限与动作分级。默认接入 GPT / DeepSeek，数据存储使用系统用户应用数据目录下的 SQLite；数据访问参考 dawning 的 Dapper 经验，MVP 默认 SQLite，MySQL 作为未来可选适配。详见 [ADR-016](pages/adrs/mvp-desktop-stack-electron-aspnetcore.md)。
 - **个人 OS 不是什么**：不是替代操作系统内核，不是 app launcher，不是企业工作流平台，不是基于情绪 / 注意力做推荐分发的系统。它首先是个人记忆、意图理解、授权与执行边界的中间层。
 - **每次决策必答的两个问题**：
   1. 这个设计是"为本产品定制"，还是"任何 Agent 都需要"？
@@ -195,7 +195,7 @@ key_constraint:
 - **MVP 输入不假设用户已有整洁文件夹**。信息整理要解决的正是“东西散、上下文乱、用户懒得整理”的问题，因此第一版不默认读取用户文件夹，不把“用户已经有清晰目录结构”作为前提。默认入口应是 user 显式提供 / 选择的材料、agent 管理的 inbox，或会话中自然沉淀的待整理内容；读取文件夹只作为显式授权能力。详见 [ADR-012](pages/adrs/mvp-input-boundary-no-default-folder-reading.md)。
 - **MVP 第一版切片保持窄而可逆**。第一版采用聊天窗口 + agent inbox，只接显式材料与会话沉淀，先做总结 / 分类 / 打标签 / 候选整理方案；Memory Ledger 可查看、可编辑、可删除；兴趣权重先用简单可解释规则。小批量文件、外部数据源、写索引、移动 / 重命名 / 删除等能力后置。详见 [ADR-014](pages/adrs/mvp-first-slice-chat-inbox-read-side.md)。
 - **仓库是产品 monorepo，docs/ 是内置 LLM-Wiki**。dawning-assistant 即将删除、dawning-agents 已弃用后，本仓库承载产品实现与决策记忆；docs/ 仍按 SCHEMA 维护，应用代码可在 docs/ 外新增 apps/、src/、tests/ 等目录。详见 [ADR-015](pages/adrs/repository-shape-product-monorepo-with-wiki.md)。
-- **MVP 桌面技术栈采用 Electron + ASP.NET Core 本地后端**。成熟框架优先；第一版支持 Windows / macOS；Electron 负责桌面壳和交互界面，ASP.NET Core 作为本地 agent runtime；默认接入 GPT / DeepSeek；SQLite 数据放在系统用户应用数据目录；第一版不默认做云后端、账号系统或同步服务。详见 [ADR-016](pages/adrs/mvp-desktop-stack-electron-aspnetcore.md)。
+- **MVP 桌面技术栈采用 Electron + Arco Design Vue + ASP.NET Core 本地后端**。成熟框架优先；第一版支持 Windows / macOS；Electron 负责桌面壳，Arco Design Vue + TypeScript + Vite 负责交互界面，ASP.NET Core 作为本地 agent runtime；默认接入 GPT / DeepSeek；SQLite 数据放在系统用户应用数据目录，数据访问参考 Dawning.ORM.Dapper + Microsoft.Data.Sqlite；第一版不默认做云后端、账号系统、同步服务或 MySQL 部署。详见 [ADR-016](pages/adrs/mvp-desktop-stack-electron-aspnetcore.md)。
 - **实现永远方案先行**。产品代码实现、目录生成、依赖引入和架构性修改前，必须先给方案并获得确认；不得未经确认一次性生成 apps/、src/、tests/ 等产品目录或大块 scaffold。详见 [Rule 实现前必须方案先行](pages/rules/plan-first-implementation.md)。
 - **主动性默认克制**。agent 默认不实时打断 user；普通主动性汇总成候选摘要。只有安全、截止时间、数据丢失、误删 / 误改风险等高优先级事件才允许立即打断。详见 [ADR-008](pages/adrs/proactivity-and-interruption-boundary.md)。
 - **抽象指令默认上下文优先**。当 user 说"处理一下"、"整理一下"、"优化一下"等模糊指令时，agent 先关联上下文和长期记忆推断；能推断则给 2–4 个候选方案或按动作级别处理，推断不出来才询问。L0 可直接做，L1 先预览或小范围执行，L2/L3 不执行。详见 [ADR-009](pages/adrs/abstract-instruction-fallback.md)。
@@ -270,4 +270,4 @@ key_constraint:
 
 ---
 
-*Purpose 版本：1.17 | 最后更新：2026-04-28 | 与 SCHEMA.md 协同演化*
+*Purpose 版本：1.18 | 最后更新：2026-04-28 | 与 SCHEMA.md 协同演化*
