@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/mvp-main-scenario-information-curation.md]
+related: [pages/adrs/mvp-main-scenario-information-curation.md, pages/adrs/repository-shape-product-monorepo-with-wiki.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-04-28
@@ -70,6 +70,8 @@ v1.6 中存在几处容易被 future agent 误读的点：
 - §2 将目标用户澄清为「不想写 prompt / 不想管理上下文」的人，避免把高级用户整体排除在外。
 - §4.1 将长期记忆自研边界澄清为「记忆模型、用户画像语义、可解释 / 可控策略」自研，底层基础设施可复用成熟组件。
 
+后续 ADR-015 将仓库形态从 wiki-only 升级为产品 monorepo；本 ADR 对“产品形态决策可收录”的澄清仍然有效，且成为同仓实现产品代码的前置依据之一。
+
 ## 影响
 
 **正向影响**：
@@ -92,4 +94,5 @@ v1.6 中存在几处容易被 future agent 误读的点：
 - [PURPOSE.md](../../PURPOSE.md)：方向意图与本 ADR 对应的 v1.7 修改位置。
 - [SCHEMA.md](../../SCHEMA.md)：本 ADR 的结构契约。
 - [ADR-005 MVP 主场景选型 = 信息整理](mvp-main-scenario-information-curation.md)：MVP 主场景决策。
+- [ADR-015 仓库形态：产品 monorepo + 内置 LLM-Wiki](repository-shape-product-monorepo-with-wiki.md)：定义仓库从 wiki-only 升级为产品 monorepo。
 - [pages/hubs/agent-os.md](../hubs/agent-os.md)：root hub。

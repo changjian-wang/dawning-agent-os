@@ -8,16 +8,17 @@
 
 ## 1. 目标
 
-为 dawning-agent-os 这个在建项目沉淀一份"可被 LLM 随时查询、随构建过程同步演化"的工程知识库。它要同时满足三件事：
+为 dawning-agent-os 这个在建个人 AI agent 产品沉淀一份"可被 LLM 随时查询、随构建过程同步演化"的工程知识库，并让这份知识库与产品代码共处同一主仓库。它要同时满足四件事：
 
 1. **决策可追溯（永久）**：从项目第 0 天起，每一个非显然的架构选择、每一次取代旧决策的转折，都留下 ADR；当存在多个值得对照的备选时，再配一份 comparison。无论几个月还是几年后翻出来，都能完整复原"什么时间、基于什么信息、做了什么选择、否决了哪些备选、后来是否被推翻"——这条时间线本身就是项目最重要的资产。
 2. **外部知识可消化**：读到的论文 / 框架 / 仓库不停留在收藏夹，而是被压成 entity / concept 页，并显式连接到本项目的设计判断（"支持我的假设" / "被我否决，理由是 X"）。
 3. **LLM-friendly 的项目记忆**：未来当我或 coding agent 写代码时，wiki 是第一手上下文来源——比读源码更快回答"这个模块为什么长这样"。
+4. **产品实现与决策记忆同仓**：dawning-assistant 即将删除、dawning-agents 已弃用后，本仓库升级为产品 monorepo；docs/ 继续作为内置 LLM-Wiki，应用代码在同仓库内演进。
 
 ## 2. 关键问题
 
 > 项目策略：**先做一款 Agent 产品，待产品成熟后再从中提取出 Agent Framework**。
-> 这意味着 wiki 同时要服务两个阶段：当下的产品决策、以及未来"哪些代码该被抽出来"的判断。
+> 这意味着 dawning-agent-os 是产品 monorepo，而 docs/ 是内置 LLM-Wiki；wiki 同时要服务两个阶段：当下的产品决策、以及未来"哪些代码该被抽出来"的判断。
 
 驱动收录的核心问题清单（会持续演化）：
 
@@ -29,6 +30,7 @@
 ```yaml
 product_name: dawning-agent-os
 product_type: 通用个人 AI agent（"AI 管家"形态）
+repository_shape: 产品 monorepo + 内置 LLM-Wiki；docs/ 记录决策和知识，应用代码也进入本仓库
 core_value: 让用户用最自然的语气说话，agent 负责听懂、推断、执行；用户不需要会写 prompt
 core_interaction_principle:
   name: options-over-elaboration（选择题优先于问答题）
@@ -62,6 +64,7 @@ key_differentiator:
   vs_copilot_cursor: 不依赖用户会写 prompt；理解抽象意图；跨会话记住主人；管家形态而非补全器
   vs_general_agent_framework: 我们是产品而非框架；framework 是产品成熟后的副产物
 key_constraint:
+  repository_boundary: dawning-agent-os 不再是 wiki-only；docs/ 仍受 SCHEMA 约束，代码实现可在 apps/、src/、tests/ 等目录演进
   subject_object_boundary: agent 是客体，user 是主体；agent 永远不替 user 形成最终判断、塑造偏好、定义身份
   failure_default: 不确定时优先给候选让用户挑，不赌运气、不强制用户重新描述
   mvp_input_boundary: MVP 信息整理不默认读取用户文件夹；第一版从 user 显式提供 / 选择的材料或 agent 管理的 inbox 开始
@@ -120,6 +123,7 @@ key_constraint:
   - 生活决策：只列 tradeoff / 给 2–4 个候选，不下结论。
   副场景与主场景共享 Memory 模块；是否能被复用是验证「通用层抽取」是否成立的依据（对应下方「通用层抽取（未来）」中的 framework 抽取问题）。
 - **最终形态（北极星，非承诺）**：长期收敛于「个人计算的中间层 / 个人 OS」——长期记忆与意图理解作为系统级能力，被沉淀为 memory / intent / permission 层。短期产品仍会主动接入文件、笔记、邮件、日历等外部数据源；长期目标是让其它 app 也能反向接入这层能力，而不是让 agent 永远停留在逐个 app 适配器集合。本条仅作为路径过滤器（每个架构决策反问「是否朝此方向收敛」），不进入 §4.1 thesis、不立刻驱动功能清单；待 MVP 跑通且 Memory 模块出现外部依赖后，再考虑升级为 §4.1 + 起草 ADR。
+- **仓库形态**：dawning-agent-os 不再只是 wiki-only 仓库，而是产品 monorepo + 内置 LLM-Wiki。docs/ 继续记录决策、知识和边界；产品代码也进入本仓库。详见 [ADR-015](pages/adrs/repository-shape-product-monorepo-with-wiki.md)。
 - **个人 OS 不是什么**：不是替代操作系统内核，不是 app launcher，不是企业工作流平台，不是基于情绪 / 注意力做推荐分发的系统。它首先是个人记忆、意图理解、授权与执行边界的中间层。
 - **每次决策必答的两个问题**：
   1. 这个设计是"为本产品定制"，还是"任何 Agent 都需要"？
@@ -185,6 +189,7 @@ key_constraint:
 - **兴趣画像必须有权重与衰减**。user 选择的 tags 只是冷启动种子，不是永久偏好或身份标签。agent 应在 Memory Ledger 中把关注主题表达为带权重、置信度、最近触达时间和衰减策略的信号；长期不关注默认降权，反复主动投喂 / 确认可升权，user 可 pin、降权、归档或删除。详见 [ADR-013](pages/adrs/interest-profile-weighting-and-decay.md)。
 - **MVP 输入不假设用户已有整洁文件夹**。信息整理要解决的正是“东西散、上下文乱、用户懒得整理”的问题，因此第一版不默认读取用户文件夹，不把“用户已经有清晰目录结构”作为前提。默认入口应是 user 显式提供 / 选择的材料、agent 管理的 inbox，或会话中自然沉淀的待整理内容；读取文件夹只作为显式授权能力。详见 [ADR-012](pages/adrs/mvp-input-boundary-no-default-folder-reading.md)。
 - **MVP 第一版切片保持窄而可逆**。第一版采用聊天窗口 + agent inbox，只接显式材料与会话沉淀，先做总结 / 分类 / 打标签 / 候选整理方案；Memory Ledger 可查看、可编辑、可删除；兴趣权重先用简单可解释规则。小批量文件、外部数据源、写索引、移动 / 重命名 / 删除等能力后置。详见 [ADR-014](pages/adrs/mvp-first-slice-chat-inbox-read-side.md)。
+- **仓库是产品 monorepo，docs/ 是内置 LLM-Wiki**。dawning-assistant 即将删除、dawning-agents 已弃用后，本仓库承载产品实现与决策记忆；docs/ 仍按 SCHEMA 维护，应用代码可在 docs/ 外新增 apps/、src/、tests/ 等目录。详见 [ADR-015](pages/adrs/repository-shape-product-monorepo-with-wiki.md)。
 - **主动性默认克制**。agent 默认不实时打断 user；普通主动性汇总成候选摘要。只有安全、截止时间、数据丢失、误删 / 误改风险等高优先级事件才允许立即打断。详见 [ADR-008](pages/adrs/proactivity-and-interruption-boundary.md)。
 - **抽象指令默认上下文优先**。当 user 说"处理一下"、"整理一下"、"优化一下"等模糊指令时，agent 先关联上下文和长期记忆推断；能推断则给 2–4 个候选方案或按动作级别处理，推断不出来才询问。L0 可直接做，L1 先预览或小范围执行，L2/L3 不执行。详见 [ADR-009](pages/adrs/abstract-instruction-fallback.md)。
 - **代笔默认客观可靠**。agent 代笔时默认冷静、客观、可靠，不加入不必要的情绪，不深度拟人模仿 user；对外内容始终只是草稿，发送必须确认。详见 [ADR-010](pages/adrs/objective-drafting-style.md)。
@@ -232,6 +237,7 @@ key_constraint:
   12. **MVP 输入边界：不默认读取用户文件夹**（[ADR-012](pages/adrs/mvp-input-boundary-no-default-folder-reading.md)）——对应 §2「最小可用形态」与 §4.1「MVP 输入不假设用户已有整洁文件夹」；定义第一版从 user 显式提供 / 选择的材料或 agent 管理的 inbox 开始，文件夹读取仅作为显式授权能力。
   13. **兴趣画像采用权重与时间衰减**（[ADR-013](pages/adrs/interest-profile-weighting-and-decay.md)）——对应 §2「最小可用形态」与 §4.1「兴趣画像必须有权重与衰减」；定义 tags 只是冷启动种子，关注信号进入 Memory Ledger，并随行为、确认、纠错和时间变化。
   14. **MVP 第一版切片：聊天 + inbox + 读侧整理**（[ADR-014](pages/adrs/mvp-first-slice-chat-inbox-read-side.md)）——对应 §2「最小可用形态」与 §4.1「MVP 第一版切片保持窄而可逆」；定义第一版界面、输入、动作范围、Memory 可见性和兴趣权重规则。
+  15. **仓库形态：产品 monorepo + 内置 LLM-Wiki**（[ADR-015](pages/adrs/repository-shape-product-monorepo-with-wiki.md)）——对应 §1「产品实现与决策记忆同仓」与 §4.1「仓库是产品 monorepo，docs/ 是内置 LLM-Wiki」；定义 dawning-agent-os 从 wiki-only 升级为产品主仓库。
 
 ## 5. 读者画像
 
@@ -256,4 +262,4 @@ key_constraint:
 
 ---
 
-*Purpose 版本：1.14 | 最后更新：2026-04-28 | 与 SCHEMA.md 协同演化*
+*Purpose 版本：1.15 | 最后更新：2026-04-28 | 与 SCHEMA.md 协同演化*

@@ -1,10 +1,11 @@
 # Claude Code Instructions
 
-This repo is an LLM-Wiki. All agent instructions live in [AGENTS.md](./AGENTS.md).
+This repo is a product monorepo with an embedded LLM-Wiki under `docs/`. All agent instructions live in [AGENTS.md](./AGENTS.md).
 
 Authoritative rules:
 
-- Wiki scope: [`docs/PURPOSE.md`](./docs/PURPOSE.md)
+- Product direction and wiki scope: [`docs/PURPOSE.md`](./docs/PURPOSE.md)
 - Wiki structure: [`docs/SCHEMA.md`](./docs/SCHEMA.md)
+- Repository-shape ADR: [`docs/pages/adrs/repository-shape-product-monorepo-with-wiki.md`](./docs/pages/adrs/repository-shape-product-monorepo-with-wiki.md)
 
-Read both before any write operation under `docs/`.
+Read PURPOSE and SCHEMA before any write operation under `docs/`. For application code outside `docs/`, read PURPOSE and relevant ADRs first.

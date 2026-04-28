@@ -53,6 +53,7 @@ part_of: []
 - [ADR-012 MVP 输入边界：不默认读取用户文件夹](../adrs/mvp-input-boundary-no-default-folder-reading.md)
 - [ADR-013 兴趣画像采用权重与时间衰减](../adrs/interest-profile-weighting-and-decay.md)
 - [ADR-014 MVP 第一版切片：聊天 + inbox + 读侧整理](../adrs/mvp-first-slice-chat-inbox-read-side.md)
+- [ADR-015 仓库形态：产品 monorepo + 内置 LLM-Wiki](../adrs/repository-shape-product-monorepo-with-wiki.md)
 
 预期的子 hub（待建）：
 
