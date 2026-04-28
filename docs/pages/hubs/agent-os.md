@@ -54,6 +54,11 @@ part_of: []
 - [ADR-013 兴趣画像采用权重与时间衰减](../adrs/interest-profile-weighting-and-decay.md)
 - [ADR-014 MVP 第一版切片：聊天 + inbox + 读侧整理](../adrs/mvp-first-slice-chat-inbox-read-side.md)
 - [ADR-015 仓库形态：产品 monorepo + 内置 LLM-Wiki](../adrs/repository-shape-product-monorepo-with-wiki.md)
+- [ADR-016 MVP 桌面技术栈：Electron + ASP.NET Core 本地后端](../adrs/mvp-desktop-stack-electron-aspnetcore.md)
+
+已落地规则：
+
+- [Rule 实现前必须方案先行](../rules/plan-first-implementation.md)
 
 预期的子 hub（待建）：
 

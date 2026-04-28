@@ -20,6 +20,7 @@
 
 - 先读 [`docs/PURPOSE.md`](./docs/PURPOSE.md) 的产品契约与当前 thesis。
 - 再读相关 ADR，特别是 MVP、Memory、权限 / 动作边界相关决策。
+- 必须遵守 [`Rule 实现前必须方案先行`](./docs/pages/rules/plan-first-implementation.md)：产品代码实现、目录生成、依赖引入和架构性修改前，先给方案并获得确认。
 - `docs/SCHEMA.md` 只约束 `docs/` 的 wiki 结构，不约束应用代码目录。
 - 后续若出现代码工程规则，应新增对应 rule / ADR，而不是把代码规范塞进 SCHEMA。
 

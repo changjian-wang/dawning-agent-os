@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/mvp-main-scenario-information-curation.md, pages/adrs/mvp-input-boundary-no-default-folder-reading.md, pages/adrs/explicit-memory-ledger-mvp.md, pages/adrs/interest-profile-weighting-and-decay.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/repository-shape-product-monorepo-with-wiki.md]
+related: [pages/adrs/mvp-main-scenario-information-curation.md, pages/adrs/mvp-input-boundary-no-default-folder-reading.md, pages/adrs/explicit-memory-ledger-mvp.md, pages/adrs/interest-profile-weighting-and-decay.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/repository-shape-product-monorepo-with-wiki.md, pages/adrs/mvp-desktop-stack-electron-aspnetcore.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-04-28
@@ -134,6 +134,8 @@ MVP 第一版采用以下组合：
 
 实现承载位置由 ADR-015 决定：MVP 产品代码进入 dawning-agent-os 本仓库，docs/ 继续作为内置 LLM-Wiki。
 
+桌面技术栈由 ADR-016 决定：MVP 采用 Electron 桌面壳 + ASP.NET Core 本地后端。
+
 ## 影响
 
 **正向影响**：
@@ -164,4 +166,5 @@ MVP 第一版采用以下组合：
 - [ADR-012 MVP 输入边界：不默认读取用户文件夹](mvp-input-boundary-no-default-folder-reading.md)：定义输入边界。
 - [ADR-013 兴趣画像采用权重与时间衰减](interest-profile-weighting-and-decay.md)：定义兴趣权重与衰减。
 - [ADR-015 仓库形态：产品 monorepo + 内置 LLM-Wiki](repository-shape-product-monorepo-with-wiki.md)：定义第一版产品代码的承载仓库。
+- [ADR-016 MVP 桌面技术栈：Electron + ASP.NET Core 本地后端](mvp-desktop-stack-electron-aspnetcore.md)：定义第一版产品技术栈。
 - [pages/hubs/agent-os.md](../hubs/agent-os.md)：root hub。
