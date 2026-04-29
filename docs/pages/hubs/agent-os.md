@@ -55,14 +55,11 @@ part_of: []
 - [ADR-014 MVP 第一版切片：聊天 + inbox + 读侧整理](../adrs/mvp-first-slice-chat-inbox-read-side.md)
 - [ADR-015 仓库形态：产品 monorepo + 内置 LLM-Wiki](../adrs/repository-shape-product-monorepo-with-wiki.md)
 - [ADR-016 MVP 桌面技术栈：Electron + ASP.NET Core 本地后端](../adrs/mvp-desktop-stack-electron-aspnetcore.md)
+- [ADR-017 工程骨架 V0：桌面壳 + DDD 本地后端通电](../adrs/engineering-skeleton-v0.md)
 
 已落地规则：
 
 - [Rule 实现前必须方案先行](../rules/plan-first-implementation.md)
-
-拟议方案（未确认，不授权 scaffold）：
-
-- [ADR-017 工程骨架 V0：桌面壳 + DDD 本地后端通电](../adrs/engineering-skeleton-v0.md)
 
 预期的子 hub（待建）：
 
