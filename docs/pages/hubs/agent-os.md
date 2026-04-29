@@ -7,8 +7,8 @@ summary: dawning-agent-os wiki 的 root hub，承载主题分区与阅读起点�
 tags: [agent, meta]
 sources: []
 created: 2026-04-27
-updated: 2026-04-28
-verified_at: 2026-04-28
+updated: 2026-04-29
+verified_at: 2026-04-29
 freshness: evergreen
 status: active
 archived_reason: ""
@@ -56,6 +56,7 @@ part_of: []
 - [ADR-015 仓库形态：产品 monorepo + 内置 LLM-Wiki](../adrs/repository-shape-product-monorepo-with-wiki.md)
 - [ADR-016 MVP 桌面技术栈：Electron + ASP.NET Core 本地后端](../adrs/mvp-desktop-stack-electron-aspnetcore.md)
 - [ADR-017 工程骨架 V0：桌面壳 + DDD 本地后端通电](../adrs/engineering-skeleton-v0.md)
+- [ADR-018 后端架构参考 Equinox：DDD + MediatR + Result 模式](../adrs/backend-architecture-equinox-reference.md)
 
 已落地规则：
 
