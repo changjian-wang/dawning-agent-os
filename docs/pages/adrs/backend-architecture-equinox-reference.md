@@ -126,6 +126,7 @@ src/
   Dawning.AgentOS.Application/                 # Commands / Queries / Handlers / Behaviors / DTO / Application port
   Dawning.AgentOS.Infra.Data/                  # DbContext + Dapper Repository + UnitOfWork + Schema bootstrap
   Dawning.AgentOS.Infra.CrossCutting.Bus/      # MediatR 注册 + Pipeline Behaviors + DomainEventDispatcher
+  Dawning.AgentOS.Infra.CrossCutting.Security/ # Startup token / 本地通信安全凭据
   Dawning.AgentOS.Infra.CrossCutting.IoC/      # NativeInjectorBootStrapper：集中注册 + 按后缀自动扫描
   Dawning.AgentOS.Services.Api/                # Endpoints + Middleware + ProblemDetails 映射
 
@@ -147,6 +148,7 @@ tests/
 - `Application` 引用 `Domain.Services`、`Domain` 与 `Domain.Core`，并引用 `MediatR` 抽象包。
 - `Infra.Data` 引用 `Application`、`Domain` 与 `Domain.Core`，并引用 `Dapper`、`Microsoft.Data.Sqlite`、`Dawning.ORM.Dapper`。
 - `Infra.CrossCutting.Bus` 引用 `Application` 与 `Domain.Core`，并引用 `MediatR`。
+- `Infra.CrossCutting.Security` 引用 `Application`，提供 startup token / 本地通信安全凭据实现；不依赖 `Infra.Data` / `Infra.CrossCutting.Bus`。
 - `Infra.CrossCutting.IoC` 引用其余所有 src 项目，作为唯一集中注册位置。
 - `Services.Api` 只引用 `Infra.CrossCutting.IoC`，不直接依赖其他层。
 - `Domain` / `Domain.Services` 不依赖 MediatR 主包；只有 `IDomainEvent : INotification` 这一处依赖 `MediatR.Contracts` 抽象包。
@@ -235,14 +237,17 @@ public interface IUnitOfWork
   - `Domain.Services` 仅依赖 `Domain` / `Domain.Core`。
   - `Application` 不依赖 `Infra.*` / `Services.Api` / `Dapper` / `Microsoft.Data.Sqlite` / `Microsoft.AspNetCore.*`。
   - `Infra.Data` / `Infra.CrossCutting.*` 不依赖 `Services.Api`。
+  - `Infra.CrossCutting.Security` 不依赖 `Infra.Data` 与 `Infra.CrossCutting.Bus`。
   - `Services.Api` 仅依赖 `Infra.CrossCutting.IoC`。
   - `Domain` / `Domain.Services` 不引用 `MediatR` 主包（只允许 `MediatR.Contracts`）。
   - 实现 `ICommand` / `IQuery` 的类型必须放在 `Application` 项目。
   - Pipeline Behavior 实现类必须以 `Behavior` 结尾，并放在 `Infra.CrossCutting.Bus`。
+  - Startup token 相关类型（`IStartupTokenProvider` / `IStartupTokenValidator` / 实现 / Defaults）必须放在 `Infra.CrossCutting.Security`。
 
 ### Identity / 网关 / 云接入
 
 - V0 不接入 ASP.NET Identity / OpenIddict / JWT。
+- Startup token 是 V0 桌面进程间本地通信的临时凭据，归 `Infra.CrossCutting.Security` 项目管理；它**不是**领域权限模型，也不是面向远端用户的身份认证。Domain / Domain.Services 中的 `Permissions/ActionLevel` 与 startup token 互不相通。
 - 网关与云后端接入作为复议触发条件之一，届时另起 ADR 决定如何在保持 startup token 的本地通信前提下增量接入身份层。
 
 ## 影响
