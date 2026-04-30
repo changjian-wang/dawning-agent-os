@@ -59,6 +59,7 @@ part_of: []
 - [ADR-018 后端架构参考 Equinox：DDD + MediatR + Result 模式](../adrs/backend-architecture-equinox-reference.md)
 - [ADR-019 测试栈：NUnit + Moq + NetArchTest](../adrs/testing-stack-nunit-v0.md)
 - [ADR-020 架构测试断言策略：层级用 assembly 引用 + 类型级用 NetArchTest 到具体类型名](../adrs/architecture-test-assertion-strategy.md)
+- [ADR-021 第一聚合外形：InboxItem V0](../adrs/inbox-item-aggregate-v0.md)
 
 已落地规则：
 
