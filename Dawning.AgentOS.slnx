@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dawning.AgentOS.Domain.Core/Dawning.AgentOS.Domain.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dawning.AgentOS.Domain.Core.Tests/Dawning.AgentOS.Domain.Core.Tests.csproj" />
+  </Folder>
 </Solution>
