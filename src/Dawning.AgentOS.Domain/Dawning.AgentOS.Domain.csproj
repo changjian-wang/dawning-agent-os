@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Domain</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Domain</AssemblyName>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!--
+      Domain holds business aggregates, value objects, domain events and
+      repository interfaces. It depends only on Domain.Core and the BCL.
+      Architecture tests enforce that no infrastructure / framework packages
+      (MediatR main, ASP.NET Core, Dapper, Microsoft.Data.Sqlite, etc.) leak
+      into this project.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Domain.Core\Dawning.AgentOS.Domain.Core.csproj" />
+    </ItemGroup>
+
+</Project>

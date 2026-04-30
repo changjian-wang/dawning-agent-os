@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Domain.Services</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Domain.Services</AssemblyName>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!--
+      Domain.Services hosts pure domain services: stateless, cross-aggregate
+      business rules that do not naturally belong to any single entity or
+      value object. It depends only on Domain (and transitively Domain.Core).
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
+    </ItemGroup>
+
+</Project>

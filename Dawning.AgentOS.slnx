@@ -1,8 +1,13 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Dawning.AgentOS.Domain.Core/Dawning.AgentOS.Domain.Core.csproj" />
+    <Project Path="src/Dawning.AgentOS.Domain.Services/Dawning.AgentOS.Domain.Services.csproj" />
+    <Project Path="src/Dawning.AgentOS.Domain/Dawning.AgentOS.Domain.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Dawning.AgentOS.Architecture.Tests/Dawning.AgentOS.Architecture.Tests.csproj" />
     <Project Path="tests/Dawning.AgentOS.Domain.Core.Tests/Dawning.AgentOS.Domain.Core.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Domain.Services.Tests/Dawning.AgentOS.Domain.Services.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Domain.Tests/Dawning.AgentOS.Domain.Tests.csproj" />
   </Folder>
 </Solution>
