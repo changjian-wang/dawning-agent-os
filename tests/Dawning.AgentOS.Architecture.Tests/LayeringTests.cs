@@ -36,11 +36,9 @@ namespace Dawning.AgentOS.Architecture.Tests;
 ///     <description>
 ///       NetArchTest matches dependencies with <c>StartsWith</c> against the
 ///       full type name. <c>HaveDependencyOn("Dawning.AgentOS.Domain")</c>
-///       would falsely fire on <c>Dawning.AgentOS.Domain.Core.*</c>, and
-///       <c>HaveDependencyOn("MediatR")</c> would falsely fire on the legal
-///       <c>MediatR.Contracts.INotification</c> dependency. Hence layer rules
-///       avoid NetArchTest entirely, and type-level bans always name the
-///       concrete forbidden type.
+///       would falsely fire on <c>Dawning.AgentOS.Domain.Core.*</c>. Hence
+///       layer rules avoid NetArchTest entirely, and type-level bans always
+///       name the concrete forbidden type.
 ///     </description>
 ///   </item>
 ///   <item>
@@ -73,17 +71,37 @@ public sealed class LayeringTests
         typeof(global::Dawning.AgentOS.Domain.Services.Permissions.IActionClassifier).Assembly;
 
     private static readonly Assembly Application =
-        typeof(global::Dawning.AgentOS.Application.Messaging.ICommand).Assembly;
+        typeof(global::Dawning.AgentOS.Application.Interfaces.IRuntimeAppService).Assembly;
 
     [Test]
-    public void DomainCore_DoesNotReferenceMainMediatRPackage()
+    public void DomainCore_DoesNotReferenceAnyExternalPackages()
     {
-        // Domain.Core may reference MediatR.Contracts (the abstraction
-        // supplying INotification). The main MediatR package, which pulls in
-        // handlers / pipeline / DI plumbing, must not leak into the domain.
+        // Per ADR-022 Domain.Core has zero external dependencies. The
+        // BCL is allowed (it surfaces as System.* / Microsoft.CSharp /
+        // netstandard / etc. depending on TFM); any third-party package
+        // reference here is a regression. The earlier MediatR.Contracts
+        // dependency was removed alongside the rest of the MediatR stack.
         var refs = ReferencedAssemblyNames(DomainCore);
 
-        Assert.That(refs, Does.Not.Contain("MediatR"));
+        var forbidden = new[]
+        {
+            "MediatR",
+            "MediatR.Contracts",
+            "Dapper",
+            "Microsoft.AspNetCore",
+            "Microsoft.Data.Sqlite",
+            "Microsoft.Extensions.DependencyInjection",
+            "Microsoft.Extensions.DependencyInjection.Abstractions",
+            "Microsoft.Extensions.Logging",
+            "Microsoft.Extensions.Logging.Abstractions",
+            "Microsoft.Extensions.Configuration",
+            "Microsoft.Extensions.Configuration.Abstractions",
+        };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(refs, Does.Not.Contain(name), $"Domain.Core must not reference '{name}'.");
+        }
     }
 
     [Test]
@@ -252,15 +270,16 @@ public sealed class LayeringTests
     [Test]
     public void Application_DoesNotReferenceFrameworkAdapterPackages()
     {
-        // Application may reference MediatR (CQRS dispatch is part of the
-        // application orchestration contract per ADR-018), but must not
-        // reference any concrete framework adapter: web stack, DI container,
-        // logging implementation, persistence driver, etc. Those belong in
-        // Infra.* projects.
+        // Per ADR-022 the Application layer no longer references MediatR or
+        // MediatR.Contracts. It must also not reference any concrete
+        // framework adapter: web stack, DI container, logging implementation,
+        // persistence driver, etc. Those belong in Infra.* projects.
         var refs = ReferencedAssemblyNames(Application);
 
         var forbidden = new[]
         {
+            "MediatR",
+            "MediatR.Contracts",
             "Microsoft.AspNetCore",
             "Microsoft.AspNetCore.App",
             "Microsoft.Extensions.DependencyInjection",
@@ -282,17 +301,53 @@ public sealed class LayeringTests
     [Test]
     public void Application_AbstractionsFolder_OnlyContainsInterfaces()
     {
-        // ADR-021 fixes Application/Abstractions/ as the home for ports:
-        // every type declared there must be an interface, with concrete
-        // implementations living in Infra.* projects. A concrete class
-        // appearing here is the early signal that the layout discipline
-        // is slipping, and must fail the build.
+        // Per ADR-022 Application/Abstractions/ holds ports (IClock,
+        // IRuntimeStartTimeProvider, IDomainEventDispatcher) implemented
+        // by Infra.* projects. A concrete class appearing in this
+        // namespace is the early signal that the layout discipline is
+        // slipping, and must fail the build.
         var result = Types
             .InAssembly(Application)
             .That()
             .ResideInNamespace("Dawning.AgentOS.Application.Abstractions")
             .Should()
             .BeInterfaces()
+            .GetResult();
+
+        Assert.That(result.IsSuccessful, Is.True, FormatFailures(result));
+    }
+
+    [Test]
+    public void Application_InterfacesFolder_OnlyContainsInterfaces()
+    {
+        // Per ADR-022 Application/Interfaces/ holds AppService facade
+        // contracts (e.g. IRuntimeAppService) consumed by the API layer.
+        // Concrete classes belong in Application/Services/, not here.
+        var result = Types
+            .InAssembly(Application)
+            .That()
+            .ResideInNamespace("Dawning.AgentOS.Application.Interfaces")
+            .Should()
+            .BeInterfaces()
+            .GetResult();
+
+        Assert.That(result.IsSuccessful, Is.True, FormatFailures(result));
+    }
+
+    [Test]
+    public void Application_ServicesNamespace_OnlyContainsConcreteClasses()
+    {
+        // Per ADR-022 Application/Services/ holds the concrete AppService
+        // implementations of contracts declared in Application/Interfaces/.
+        // Interfaces or abstract classes belong elsewhere.
+        var result = Types
+            .InAssembly(Application)
+            .That()
+            .ResideInNamespace("Dawning.AgentOS.Application.Services")
+            .Should()
+            .BeClasses()
+            .And()
+            .NotBeAbstract()
             .GetResult();
 
         Assert.That(result.IsSuccessful, Is.True, FormatFailures(result));

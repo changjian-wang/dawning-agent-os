@@ -8,24 +8,26 @@
 
     <!--
       Application orchestrates use cases on top of Domain / Domain.Services.
-      Internal directory layout is fixed by ADR-021:
-        Abstractions/   ports implemented in Infra.* projects
-        Messaging/      CQRS markers (ICommand / IQuery), self-consumed
-        <Feature>/      vertical slices (Command / Query / Handler / DTO)
-        <CrossCutting>/ shared DTOs, only when >= 2 features need them
-      No Common/ / Shared/ / Helpers/ folders are permitted.
+      Internal directory layout is fixed by ADR-022 (supersedes ADR-021):
+        Abstractions/         ports implemented in Infra.* projects
+                              (IClock, IRuntimeStartTimeProvider,
+                               IDomainEventDispatcher)
+        Interfaces/           AppService facade contracts called by API layer
+        Services/             AppService implementations of Interfaces/
+        <Feature>/            DTOs only (e.g. Runtime/RuntimeStatus.cs)
+        DomainEventHandlers/  cross-aggregate orchestrators reacting to
+                              IDomainEvent (V0 empty, hook only)
+      No Common/, Shared/, Helpers/ or Messaging/ folders are permitted.
 
-      Application depends on Domain (and transitively Domain.Core), on
-      Domain.Services for cross-aggregate domain logic, and on MediatR for
-      handler dispatch. It must not reference any Infra.* / Services.Api
-      project; that direction is pinned by LayeringTests.
+      Application depends on Domain (and transitively Domain.Core) and on
+      Domain.Services for cross-aggregate domain logic. Per ADR-022, MediatR
+      and MediatR.Contracts are removed from the entire solution; the
+      Application layer no longer references either. It must not reference
+      any Infra.* / Services.Api project; that direction is pinned by
+      LayeringTests.
     -->
     <ItemGroup>
         <ProjectReference Include="..\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
         <ProjectReference Include="..\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="MediatR" />
     </ItemGroup>
 </Project>

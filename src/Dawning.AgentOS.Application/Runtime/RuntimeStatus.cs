@@ -7,9 +7,8 @@ namespace Dawning.AgentOS.Application.Runtime;
 /// <param name="NowUtc">The UTC instant when the snapshot was taken.</param>
 /// <param name="Uptime">
 /// Wall-clock duration since <paramref name="StartedAtUtc"/>. Always
-/// non-negative; <see cref="GetRuntimeStatusQueryHandler"/> clamps to zero
-/// if a clock skew makes <paramref name="NowUtc"/> precede
-/// <paramref name="StartedAtUtc"/>.
+/// non-negative; the runtime AppService clamps to zero if a clock skew
+/// makes <paramref name="NowUtc"/> precede <paramref name="StartedAtUtc"/>.
 /// </param>
 /// <param name="Healthy">
 /// <c>true</c> when the runtime considers itself ready to serve requests.

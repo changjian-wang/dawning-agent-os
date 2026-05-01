@@ -8,12 +8,10 @@
     </PropertyGroup>
 
     <!--
-      Domain.Core depends only on MediatR.Contracts (the INotification abstraction).
-      The main MediatR package must not reach the domain layer; that is enforced
-      separately by architecture tests.
+      Domain.Core has zero external dependencies (BCL only).
+      Per ADR-022, MediatR is removed from the entire solution; IDomainEvent
+      is a plain marker, dispatch is handled by the self-built
+      IDomainEventDispatcher port (declared in Application/Abstractions).
     -->
-    <ItemGroup>
-        <PackageReference Include="MediatR.Contracts" />
-    </ItemGroup>
 
 </Project>

@@ -7,11 +7,15 @@
     <!-- ============================================================== -->
     <!--                   PRODUCT RUNTIME PACKAGES                     -->
     <!-- ============================================================== -->
-    <ItemGroup>
-        <!-- Mediator (ADR-018): MediatR v12.x Apache 2.0 -->
-        <PackageVersion Include="MediatR" Version="12.4.1" />
-        <PackageVersion Include="MediatR.Contracts" Version="2.0.1" />
-    </ItemGroup>
+    <!--
+      Per ADR-022 the solution has zero runtime third-party dependencies
+      until S4 introduces Dapper / Microsoft.Data.Sqlite for the
+      infrastructure layer. MediatR / MediatR.Contracts were removed
+      together with the Application layer's use-case mediator and the
+      Domain.Core INotification base; domain events are dispatched by the
+      self-built IDomainEventDispatcher (port in Application/Abstractions,
+      implementation in Infra layer).
+    -->
 
     <!-- ============================================================== -->
     <!--                    TEST PACKAGES (ADR-019)                     -->
