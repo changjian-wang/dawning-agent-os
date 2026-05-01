@@ -7,13 +7,13 @@ summary: V0 后端测试栈锁定 NUnit 4.4.x + NUnit3TestAdapter + Microsoft.NE
 tags: [agent]
 sources: []
 created: 2026-04-30
-updated: 2026-04-30
-verified_at: 2026-04-30
+updated: 2026-05-01
+verified_at: 2026-05-01
 freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/engineering-skeleton-v0.md, pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/architecture-test-assertion-strategy.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/engineering-skeleton-v0.md, pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-04-30

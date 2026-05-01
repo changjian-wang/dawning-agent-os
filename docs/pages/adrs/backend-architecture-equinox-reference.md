@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/repository-shape-product-monorepo-with-wiki.md, pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/engineering-skeleton-v0.md, pages/adrs/testing-stack-nunit-v0.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/repository-shape-product-monorepo-with-wiki.md, pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/engineering-skeleton-v0.md, pages/adrs/testing-stack-nunit-v0.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-04-29
@@ -115,6 +115,8 @@ adr_revisit_when: "出现需要分布式事务、第一个独立 read model、IU
 ## 决策
 
 > **部分被 [ADR-022 去 MediatR：自研领域事件分发器与 AppService 立面](no-mediator-self-domain-event-dispatcher.md) 定向 supersede（2026-05-01）。** ADR-022 废止了本 ADR 中与 MediatR 相关的所有内容：§Mediator、§Pipeline Behaviors、架构测试中针对 MediatR 的条款、以及§项目划分 / §依赖方向中与 MediatR / MediatR.Contracts 相关的条目。本 ADR 的其它部分（DDD 分层、Result 模式、IUnitOfWork 胖入口、按命名后缀自动注册、NetArchTest 架构测试基线、不接 Identity / 云后端）继续生效。
+>
+> **Api 部分被 [ADR-023 Api 入口立面：AppService 接入与 V0 端点形态](api-entry-facade-and-v0-endpoints.md) 定向 supersede（2026-05-01）。** ADR-023 废止了本 ADR 中与 Api 项目相关的命名漂移与形态空白：① 项目命名以 `Dawning.AgentOS.Api` 为准（不是本 ADR 文中沿用 Equinox 的 `Services.Api`），② Api 端点风格固定为 Minimal API endpoint groups（非 Controller），③ 响应壳明确为"成功 → DTO，失败 → ProblemDetails"，不引入 `ApiResult<T>` 包装，④ `Result<T>.ToHttpResult()` 扩展归属 Api 项目的 `Results/` 目录而不是 Application 层，⑤ V0 不引入 Swagger / OpenAPI、Asp.Versioning、`MapHealthChecks` / `IHealthCheck`，⑥ AppService 自动注册由 Application 层 `AddApplication()` 扩展承担。本 ADR 中的 Result 模式、ProblemDetails 状态码语义（200 / 400 / 422 / 404）继续作为依据，由 ADR-023 §4 的映射规则具体化。
 
 采用方案 C：参考 Equinox v1.10 的分层 / 命名 / 心智，定向偏离 ORM、Mediator 包名、错误流模型与 Identity 接入。
 

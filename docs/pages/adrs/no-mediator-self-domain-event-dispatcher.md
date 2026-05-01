@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: [pages/adrs/application-folder-layout.md]
-related: [pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/engineering-skeleton-v0.md, pages/adrs/architecture-test-assertion-strategy.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/engineering-skeleton-v0.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-05-01

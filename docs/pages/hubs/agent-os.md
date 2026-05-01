@@ -61,6 +61,7 @@ part_of: []
 - [ADR-020 架构测试断言策略：层级用 assembly 引用 + 类型级用 NetArchTest 到具体类型名](../adrs/architecture-test-assertion-strategy.md)
 - [ADR-021 Application 项目目录约定：Abstractions / Messaging / 垂直切片](../adrs/application-folder-layout.md)（superseded by ADR-022）
 - [ADR-022 去 MediatR：自研领域事件分发器与 AppService 立面](../adrs/no-mediator-self-domain-event-dispatcher.md)
+- [ADR-023 Api 入口立面：AppService 接入与 V0 端点形态](../adrs/api-entry-facade-and-v0-endpoints.md)
 
 已落地规则：
 
