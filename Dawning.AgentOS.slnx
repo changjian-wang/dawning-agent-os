@@ -14,5 +14,6 @@
     <Project Path="tests/Dawning.AgentOS.Domain.Core.Tests/Dawning.AgentOS.Domain.Core.Tests.csproj" />
     <Project Path="tests/Dawning.AgentOS.Domain.Services.Tests/Dawning.AgentOS.Domain.Services.Tests.csproj" />
     <Project Path="tests/Dawning.AgentOS.Domain.Tests/Dawning.AgentOS.Domain.Tests.csproj" />
+    <Project Path="tests/Dawning.AgentOS.Infrastructure.Tests/Dawning.AgentOS.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

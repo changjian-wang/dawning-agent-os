@@ -1,12 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <RootNamespace>Dawning.AgentOS.Application.Tests</RootNamespace>
-        <AssemblyName>Dawning.AgentOS.Application.Tests</AssemblyName>
+        <RootNamespace>Dawning.AgentOS.Infrastructure.Tests</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Infrastructure.Tests</AssemblyName>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
+    <!--
+      Test project for the Infrastructure adapters introduced by ADR-024:
+      SqliteConnectionFactory, SqliteSchemaInitializer and the per-platform
+      AppDataPathProvider. Per ADR-019 the project uses NUnit + Moq; per
+      ADR-024 §J1 it exercises real Microsoft.Data.Sqlite connections in
+      Mode=Memory;Cache=Shared form to keep the suite hermetic.
+    -->
     <ItemGroup>
         <PackageReference Include="NUnit" />
         <PackageReference Include="NUnit3TestAdapter" />
@@ -16,11 +23,9 @@
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Moq" />
-        <!-- ADR-024 §J1: Application tests exercise RuntimeAppService's
-             database-probe branch against a real in-memory SQLite
-             connection. The layering rule forbids Sqlite in the
-             production Application assembly, not in its tests. -->
         <PackageReference Include="Microsoft.Data.Sqlite" />
+        <PackageReference Include="Microsoft.Extensions.Options" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
         <PackageReference Include="coverlet.collector">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
@@ -28,6 +33,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+        <ProjectReference Include="..\..\src\Dawning.AgentOS.Infrastructure\Dawning.AgentOS.Infrastructure.csproj" />
     </ItemGroup>
 </Project>

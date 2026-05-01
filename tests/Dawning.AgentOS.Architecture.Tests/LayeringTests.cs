@@ -310,15 +310,16 @@ public sealed class LayeringTests
     [Test]
     public void Application_AbstractionsFolder_OnlyContainsInterfaces()
     {
-        // Per ADR-022 Application/Abstractions/ holds ports (IClock,
-        // IRuntimeStartTimeProvider, IDomainEventDispatcher) implemented
-        // by Infra.* projects. A concrete class appearing in this
-        // namespace is the early signal that the layout discipline is
-        // slipping, and must fail the build.
+        // Per ADR-022 / ADR-024 Application/Abstractions/ holds ports
+        // (IClock, IRuntimeStartTimeProvider, IDomainEventDispatcher,
+        // IDbConnectionFactory, ISchemaInitializer, IAppDataPathProvider)
+        // implemented by Infra.* projects. A concrete class appearing
+        // anywhere under this namespace tree is the early signal that
+        // the layout discipline is slipping, and must fail the build.
         var result = Types
             .InAssembly(Application)
             .That()
-            .ResideInNamespace("Dawning.AgentOS.Application.Abstractions")
+            .ResideInNamespaceStartingWith("Dawning.AgentOS.Application.Abstractions")
             .Should()
             .BeInterfaces()
             .GetResult();
@@ -418,6 +419,92 @@ public sealed class LayeringTests
         {
             Assert.That(refs, Does.Not.Contain(name), $"Api must not reference '{name}'.");
         }
+    }
+
+    [Test]
+    public void Application_DoesNotReferencePersistencePackages()
+    {
+        // Per ADR-024 §K1 the Application layer holds only persistence
+        // *ports* (IDbConnectionFactory, ISchemaInitializer); the actual
+        // SQLite driver, Dapper and the Dawning.ORM.Dapper SDK live in
+        // Infrastructure and must not leak into Application.
+        var refs = ReferencedAssemblyNames(Application);
+
+        var forbidden = new[] { "Microsoft.Data.Sqlite", "Dapper", "Dawning.ORM.Dapper" };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(
+                refs,
+                Does.Not.Contain(name),
+                $"Application must not reference persistence package '{name}' (ADR-024 §K1)."
+            );
+        }
+    }
+
+    [Test]
+    public void DomainAndDomainServices_DoNotReferencePersistencePackages()
+    {
+        // Per ADR-024 §K1 the Domain and Domain.Services layers must
+        // also be free of any persistence dependency. This is already
+        // covered transitively by their existing
+        // ...DoesNotReferenceFrameworkOrInfraPackages assertions, but a
+        // dedicated test gives a clearer signal when a regression
+        // happens specifically on the persistence axis.
+        var domainRefs = ReferencedAssemblyNames(Domain);
+        var domainServicesRefs = ReferencedAssemblyNames(DomainServices);
+
+        var forbidden = new[] { "Microsoft.Data.Sqlite", "Dapper", "Dawning.ORM.Dapper" };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(
+                domainRefs,
+                Does.Not.Contain(name),
+                $"Domain must not reference persistence package '{name}' (ADR-024 §K1)."
+            );
+            Assert.That(
+                domainServicesRefs,
+                Does.Not.Contain(name),
+                $"Domain.Services must not reference persistence package '{name}' (ADR-024 §K1)."
+            );
+        }
+    }
+
+    [Test]
+    public void PersistencePorts_LiveInApplicationAbstractionsPersistenceNamespace()
+    {
+        // Per ADR-024 §1 the persistence ports
+        // (IDbConnectionFactory, ISchemaInitializer) belong in
+        // Dawning.AgentOS.Application.Abstractions.Persistence; the
+        // hosting port (IAppDataPathProvider) belongs in
+        // Dawning.AgentOS.Application.Abstractions.Hosting. Anchoring
+        // these by reflection keeps the assertion stable across renames.
+        var dbConnectionFactoryNamespace =
+            typeof(global::Dawning.AgentOS.Application.Abstractions.Persistence.IDbConnectionFactory).Namespace;
+        var schemaInitializerNamespace =
+            typeof(global::Dawning.AgentOS.Application.Abstractions.Persistence.ISchemaInitializer).Namespace;
+        var appDataPathProviderNamespace =
+            typeof(global::Dawning.AgentOS.Application.Abstractions.Hosting.IAppDataPathProvider).Namespace;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                dbConnectionFactoryNamespace,
+                Is.EqualTo("Dawning.AgentOS.Application.Abstractions.Persistence"),
+                "IDbConnectionFactory must live in Application.Abstractions.Persistence."
+            );
+            Assert.That(
+                schemaInitializerNamespace,
+                Is.EqualTo("Dawning.AgentOS.Application.Abstractions.Persistence"),
+                "ISchemaInitializer must live in Application.Abstractions.Persistence."
+            );
+            Assert.That(
+                appDataPathProviderNamespace,
+                Is.EqualTo("Dawning.AgentOS.Application.Abstractions.Hosting"),
+                "IAppDataPathProvider must live in Application.Abstractions.Hosting."
+            );
+        });
     }
 
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>

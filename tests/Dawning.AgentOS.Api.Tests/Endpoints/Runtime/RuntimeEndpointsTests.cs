@@ -9,8 +9,9 @@ namespace Dawning.AgentOS.Api.Tests.Endpoints.Runtime;
 /// In-memory integration tests for the runtime-status endpoint. Booted
 /// via <see cref="DawningAgentOsApiFactory"/>; verifies (a) the
 /// happy-path payload shape, (b) the startup-token middleware rejects
-/// missing tokens with 401, and (c) the same middleware rejects
-/// mismatched tokens with 401.
+/// missing tokens with 401, (c) the same middleware rejects mismatched
+/// tokens with 401, and (d) per ADR-024 §H1 the database probe reports
+/// <c>Ready=true</c> with the seed schema version applied.
 /// </summary>
 [TestFixture]
 public sealed class RuntimeEndpointsTests
@@ -49,6 +50,13 @@ public sealed class RuntimeEndpointsTests
             Assert.That(
                 payload.Uptime,
                 Is.EqualTo(DawningAgentOsApiFactory.NowUtc - DawningAgentOsApiFactory.StartedAtUtc)
+            );
+            Assert.That(payload.Database, Is.Not.Null, "database snapshot must be present");
+            Assert.That(payload.Database!.Ready, Is.True, "schema bootstrap must have succeeded");
+            Assert.That(
+                payload.Database.SchemaVersion,
+                Is.GreaterThanOrEqualTo(1L),
+                "the seed migration must have been applied (ADR-024 §3)"
             );
         });
     }
@@ -91,6 +99,9 @@ public sealed class RuntimeEndpointsTests
         DateTimeOffset StartedAtUtc,
         DateTimeOffset NowUtc,
         TimeSpan Uptime,
-        bool Healthy
+        bool Healthy,
+        DatabaseStatusPayload? Database
     );
+
+    private sealed record DatabaseStatusPayload(bool Ready, long? SchemaVersion, string? FilePath);
 }

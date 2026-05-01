@@ -14,9 +14,16 @@ namespace Dawning.AgentOS.Application.Runtime;
 /// <c>true</c> when the runtime considers itself ready to serve requests.
 /// V0 always returns <c>true</c>; later slices may add probes (DB, IPC, etc.).
 /// </param>
+/// <param name="Database">
+/// Per ADR-024 §H1, the SQLite store's readiness snapshot. Surfacing it
+/// through <see cref="RuntimeStatus"/> (rather than as a separate
+/// endpoint) keeps the runtime-observable persistence signal on the
+/// existing <c>GET /api/runtime/status</c> contract.
+/// </param>
 public sealed record RuntimeStatus(
     DateTimeOffset StartedAtUtc,
     DateTimeOffset NowUtc,
     TimeSpan Uptime,
-    bool Healthy
+    bool Healthy,
+    DatabaseStatus Database
 );
