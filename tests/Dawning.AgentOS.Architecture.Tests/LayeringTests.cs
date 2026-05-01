@@ -73,6 +73,9 @@ public sealed class LayeringTests
     private static readonly Assembly Application =
         typeof(global::Dawning.AgentOS.Application.Interfaces.IRuntimeAppService).Assembly;
 
+    private static readonly Assembly Api =
+        typeof(global::Dawning.AgentOS.Api.Endpoints.Runtime.RuntimeEndpoints).Assembly;
+
     [Test]
     public void DomainCore_DoesNotReferenceAnyExternalPackages()
     {
@@ -274,6 +277,13 @@ public sealed class LayeringTests
         // MediatR.Contracts. It must also not reference any concrete
         // framework adapter: web stack, DI container, logging implementation,
         // persistence driver, etc. Those belong in Infra.* projects.
+        //
+        // Per ADR-023 §5 the Application layer hosts the AddApplication
+        // composition extension and therefore depends on the
+        // abstractions-only package
+        // Microsoft.Extensions.DependencyInjection.Abstractions. The
+        // concrete container Microsoft.Extensions.DependencyInjection
+        // remains forbidden here; only the abstractions package is allowed.
         var refs = ReferencedAssemblyNames(Application);
 
         var forbidden = new[]
@@ -283,7 +293,6 @@ public sealed class LayeringTests
             "Microsoft.AspNetCore",
             "Microsoft.AspNetCore.App",
             "Microsoft.Extensions.DependencyInjection",
-            "Microsoft.Extensions.DependencyInjection.Abstractions",
             "Microsoft.Extensions.Logging",
             "Microsoft.Extensions.Logging.Abstractions",
             "Microsoft.Extensions.Configuration",
@@ -351,6 +360,64 @@ public sealed class LayeringTests
             .GetResult();
 
         Assert.That(result.IsSuccessful, Is.True, FormatFailures(result));
+    }
+
+    [Test]
+    public void Api_DoesNotReferenceDomainProjectsDirectly()
+    {
+        // Per ADR-023 §10 the API project is the composition root: it may
+        // reference Application (to consume AppService facades) and
+        // Infrastructure (for AddInfrastructure() in Program.cs), but it
+        // must not reach into the business-bearing domain layers.
+        // Domain.Core is the shared-kernel primitive layer (Result<T>,
+        // DomainError, IDomainEvent) used by every layer including the
+        // Api result mapping; that reference is intentional and surfaces
+        // through Application's project graph regardless.
+        var refs = ReferencedAssemblyNames(Api);
+
+        var forbidden = new[] { "Dawning.AgentOS.Domain", "Dawning.AgentOS.Domain.Services" };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(refs, Does.Not.Contain(name), $"Api must not directly reference '{name}'.");
+        }
+    }
+
+    [Test]
+    public void Api_EndpointsNamespace_OnlyContainsStaticClasses()
+    {
+        // Per ADR-023 §2 every endpoint group is a static class providing
+        // a Map<Feature>Endpoints extension method. NetArchTest models
+        // 'static' as 'sealed + abstract' on the underlying type metadata.
+        var result = Types
+            .InAssembly(Api)
+            .That()
+            .ResideInNamespaceStartingWith("Dawning.AgentOS.Api.Endpoints")
+            .Should()
+            .BeClasses()
+            .And()
+            .BeSealed()
+            .And()
+            .BeAbstract()
+            .GetResult();
+
+        Assert.That(result.IsSuccessful, Is.True, FormatFailures(result));
+    }
+
+    [Test]
+    public void Api_DoesNotReferencePersistenceOrORMPackages()
+    {
+        // Per ADR-023 §10 the API project, like Application, must not
+        // depend on persistence drivers or ORM packages. Those belong in
+        // the Infrastructure project, reached through DI only.
+        var refs = ReferencedAssemblyNames(Api);
+
+        var forbidden = new[] { "Dapper", "Microsoft.Data.Sqlite", "Dawning.ORM.Dapper" };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(refs, Does.Not.Contain(name), $"Api must not reference '{name}'.");
+        }
     }
 
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>

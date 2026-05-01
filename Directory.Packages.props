@@ -15,7 +15,20 @@
       Domain.Core INotification base; domain events are dispatched by the
       self-built IDomainEventDispatcher (port in Application/Abstractions,
       implementation in Infra layer).
+
+      ADR-023 §5 introduces a single narrow abstractions-only package on
+      the Application layer to host AddApplication(IServiceCollection):
+      Microsoft.Extensions.DependencyInjection.Abstractions. The concrete
+      container Microsoft.Extensions.DependencyInjection is still forbidden
+      in Application by LayeringTests, and Domain.Core / Domain /
+      Domain.Services remain at zero external dependencies.
     -->
+    <ItemGroup>
+        <PackageVersion
+            Include="Microsoft.Extensions.DependencyInjection.Abstractions"
+            Version="9.0.0"
+        />
+    </ItemGroup>
 
     <!-- ============================================================== -->
     <!--                    TEST PACKAGES (ADR-019)                     -->
@@ -28,5 +41,6 @@
         <PackageVersion Include="Moq" Version="4.20.72" />
         <PackageVersion Include="coverlet.collector" Version="6.0.4" />
         <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
+        <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
     </ItemGroup>
 </Project>

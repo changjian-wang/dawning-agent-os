@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <RootNamespace>Dawning.AgentOS.Architecture.Tests</RootNamespace>
-        <AssemblyName>Dawning.AgentOS.Architecture.Tests</AssemblyName>
+        <RootNamespace>Dawning.AgentOS.Api.Tests</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Api.Tests</AssemblyName>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
     </PropertyGroup>
@@ -15,23 +15,15 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Moq" />
         <PackageReference Include="coverlet.collector">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="NetArchTest.Rules" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     </ItemGroup>
 
-    <!--
-      Architecture tests load the assemblies they assert on via project
-      references. Each new src project that needs a layering rule must be
-      added here so its assembly is in the bin folder at test time.
-    -->
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Core\Dawning.AgentOS.Domain.Core.csproj" />
-        <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
-        <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
-        <ProjectReference Include="..\..\src\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Api\Dawning.AgentOS.Api.csproj" />
     </ItemGroup>
 </Project>

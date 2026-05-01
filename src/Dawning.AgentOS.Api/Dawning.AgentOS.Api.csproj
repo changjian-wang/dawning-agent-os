@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Api</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Api</AssemblyName>
+        <IsPackable>false</IsPackable>
+        <UserSecretsId>dawning-agentos-api</UserSecretsId>
+    </PropertyGroup>
+
+    <!--
+      The API host (per ADR-017 + ADR-023). Composition root only; consumes
+      the Application facade through services.AddApplication() and never
+      references Domain / Domain.Services / Domain.Core / Infrastructure
+      directly.
+
+      Internal layout is fixed by ADR-023 §1:
+        Endpoints/<Feature>/<Feature>Endpoints.cs    static class + MapXxx
+        Middleware/                                    custom middleware
+        Options/                                       startup options
+        Results/                                       Result<T> -> IResult
+        DependencyInjection/                           AddApi extension
+
+      Per ADR-023 V0 deliberately omits Swagger / OpenAPI, Asp.Versioning,
+      MapHealthChecks / IHealthCheck and any ApiResult<T> wrapper. Those
+      are tracked in the ADR's adr_revisit_when frontmatter.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+        <ProjectReference Include="..\Dawning.AgentOS.Infrastructure\Dawning.AgentOS.Infrastructure.csproj" />
+    </ItemGroup>
+</Project>
