@@ -62,6 +62,7 @@ part_of: []
 - [ADR-021 Application 项目目录约定：Abstractions / Messaging / 垂直切片](../adrs/application-folder-layout.md)（superseded by ADR-022）
 - [ADR-022 去 MediatR：自研领域事件分发器与 AppService 立面](../adrs/no-mediator-self-domain-event-dispatcher.md)
 - [ADR-023 Api 入口立面：AppService 接入与 V0 端点形态](../adrs/api-entry-facade-and-v0-endpoints.md)
+- [ADR-024 SQLite/Dapper 通电：连接工厂、Schema 引导与 V0 持久化骨架](../adrs/sqlite-dapper-bootstrap-and-schema-init.md)
 
 已落地规则：
 
