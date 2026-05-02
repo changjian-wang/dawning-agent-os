@@ -7,8 +7,8 @@ summary: dawning-agent-os wiki 的 root hub，承载主题分区与阅读起点�
 tags: [agent, meta]
 sources: []
 created: 2026-04-27
-updated: 2026-05-01
-verified_at: 2026-05-01
+updated: 2026-05-02
+verified_at: 2026-05-02
 freshness: evergreen
 status: active
 archived_reason: ""
@@ -63,6 +63,7 @@ part_of: []
 - [ADR-022 去 MediatR：自研领域事件分发器与 AppService 立面](../adrs/no-mediator-self-domain-event-dispatcher.md)
 - [ADR-023 Api 入口立面：AppService 接入与 V0 端点形态](../adrs/api-entry-facade-and-v0-endpoints.md)
 - [ADR-024 SQLite/Dapper 通电：连接工厂、Schema 引导与 V0 持久化骨架](../adrs/sqlite-dapper-bootstrap-and-schema-init.md)
+- [ADR-025 桌面进程监督：Electron 主进程拉起 .NET Api 子进程的拓扑、端口与启动 token](../adrs/desktop-process-supervisor-electron-dotnet-child.md)
 
 已落地规则：
 
