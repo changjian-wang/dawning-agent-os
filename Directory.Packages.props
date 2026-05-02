@@ -36,15 +36,10 @@
             Version="9.0.0"
         />
         <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
-        <PackageVersion
-            Include="Microsoft.Extensions.Hosting.Abstractions"
-            Version="9.0.0"
-        />
+        <PackageVersion Include="Dapper" Version="2.1.66" />
+        <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
         <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.0" />
-        <PackageVersion
-            Include="Microsoft.Extensions.Logging.Abstractions"
-            Version="9.0.0"
-        />
+        <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
     </ItemGroup>
 
     <!-- ============================================================== -->

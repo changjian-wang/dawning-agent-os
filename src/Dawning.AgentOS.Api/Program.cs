@@ -1,4 +1,5 @@
 using Dawning.AgentOS.Api.DependencyInjection;
+using Dawning.AgentOS.Api.Endpoints.Inbox;
 using Dawning.AgentOS.Api.Endpoints.Runtime;
 using Dawning.AgentOS.Api.Middleware;
 using Dawning.AgentOS.Application.DependencyInjection;
@@ -23,6 +24,7 @@ app.UseRouting();
 
 // ADR-023 §2 — endpoints are mapped via per-feature static classes.
 app.MapRuntimeEndpoints();
+app.MapInboxEndpoints();
 
 app.Run();
 

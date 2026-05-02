@@ -507,6 +507,30 @@ public sealed class LayeringTests
         });
     }
 
+    [Test]
+    public void IInboxRepository_LivesInDomainInboxNamespace()
+    {
+        // Per ADR-026 §H1 the aggregate repository port lives in the
+        // Domain layer (DDD-canonical placement) and talks exclusively
+        // in domain types. A future move to Application.Abstractions
+        // should fail this assertion to force a fresh ADR.
+        var inboxRepositoryType = typeof(global::Dawning.AgentOS.Domain.Inbox.IInboxRepository);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                inboxRepositoryType.Namespace,
+                Is.EqualTo("Dawning.AgentOS.Domain.Inbox"),
+                "IInboxRepository must live under Domain/Inbox per ADR-026 §H1."
+            );
+            Assert.That(
+                inboxRepositoryType.Assembly,
+                Is.EqualTo(Domain),
+                "IInboxRepository must ship in the Dawning.AgentOS.Domain assembly."
+            );
+        });
+    }
+
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>
         assembly
             .GetReferencedAssemblies()

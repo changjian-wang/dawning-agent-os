@@ -1,9 +1,11 @@
 using Dawning.AgentOS.Application.Abstractions;
 using Dawning.AgentOS.Application.Abstractions.Hosting;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Domain.Inbox;
 using Dawning.AgentOS.Infrastructure.Hosting;
 using Dawning.AgentOS.Infrastructure.Options;
 using Dawning.AgentOS.Infrastructure.Persistence;
+using Dawning.AgentOS.Infrastructure.Persistence.Inbox;
 using Dawning.AgentOS.Infrastructure.Time;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +29,11 @@ public static class InfrastructureServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        // ADR-026 §5: Dapper materializes snake_case columns into
+        // PascalCase row classes; this is a process-wide setting and
+        // is idempotent across calls.
+        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
         // Time ports (ADR-017 / ADR-022).
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IRuntimeStartTimeProvider, ProcessStartRuntimeStartTimeProvider>();
@@ -42,6 +49,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IDbConnectionFactory, SqliteConnectionFactory>();
         services.AddScoped<ISchemaInitializer, SqliteSchemaInitializer>();
         services.AddHostedService<SchemaInitializerHostedService>();
+
+        // Aggregate repositories (ADR-026 §5). The repository is scoped
+        // alongside the connection factory; per-call connection lifetime
+        // (ADR-024 §E1) keeps the repository safely re-entrant.
+        services.AddScoped<IInboxRepository, InboxRepository>();
 
         return services;
     }
