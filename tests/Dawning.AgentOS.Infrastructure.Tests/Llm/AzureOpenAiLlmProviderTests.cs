@@ -87,6 +87,56 @@ public class AzureOpenAiLlmProviderTests
     }
 
     [Test]
+    public async Task CompleteAsync_AppendsApiVersionQueryParameter()
+    {
+        var (sut, _, handler) = BuildProviderWithHandler(HttpStatusCode.OK, BuildHelloBody());
+
+        await sut.CompleteAsync(BuildPingRequest(), CancellationToken.None);
+
+        // Per ADR-029, Azure mandates the ?api-version=... query parameter.
+        handler
+            .Protected()
+            .Verify(
+                "SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(msg =>
+                    msg.RequestUri!.Query.Contains(
+                        $"api-version={LlmAzureOpenAiProviderOptions.DefaultApiVersion}",
+                        StringComparison.Ordinal
+                    )
+                ),
+                ItExpr.IsAny<CancellationToken>()
+            );
+    }
+
+    [Test]
+    public async Task CompleteAsync_HonorsCustomApiVersion()
+    {
+        const string customApiVersion = "2024-08-01-preview";
+        var (sut, _, handler) = BuildProviderWithHandler(
+            HttpStatusCode.OK,
+            BuildHelloBody(),
+            apiVersion: customApiVersion
+        );
+
+        await sut.CompleteAsync(BuildPingRequest(), CancellationToken.None);
+
+        handler
+            .Protected()
+            .Verify(
+                "SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(msg =>
+                    msg.RequestUri!.Query.Contains(
+                        $"api-version={customApiVersion}",
+                        StringComparison.Ordinal
+                    )
+                ),
+                ItExpr.IsAny<CancellationToken>()
+            );
+    }
+
+    [Test]
     public async Task CompleteAsync_OnUnauthorized_ReturnsAuthenticationFailed()
     {
         var sut = BuildProvider(HttpStatusCode.Unauthorized, "{}");
@@ -141,10 +191,11 @@ public class AzureOpenAiLlmProviderTests
         HttpStatusCode status,
         string responseBody,
         string apiKey = TestApiKey,
-        string deploymentId = TestDeploymentId
+        string deploymentId = TestDeploymentId,
+        string apiVersion = ""
     )
     {
-        var (sut, _, _) = BuildProviderWithHandler(status, responseBody, apiKey, deploymentId);
+        var (sut, _, _) = BuildProviderWithHandler(status, responseBody, apiKey, deploymentId, apiVersion);
         return sut;
     }
 
@@ -153,7 +204,8 @@ public class AzureOpenAiLlmProviderTests
             HttpStatusCode status,
             string responseBody,
             string apiKey = TestApiKey,
-            string deploymentId = TestDeploymentId
+            string deploymentId = TestDeploymentId,
+            string apiVersion = ""
         )
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -194,6 +246,7 @@ public class AzureOpenAiLlmProviderTests
                             ApiKey = apiKey,
                             Endpoint = TestEndpoint,
                             DeploymentId = deploymentId,
+                            ApiVersion = apiVersion,
                         },
                     },
                 }

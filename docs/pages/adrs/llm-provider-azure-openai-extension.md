@@ -54,6 +54,7 @@ Azure OpenAI 在 endpoint 配置方面的独特性：
 
 Azure OpenAI 的 ChatCompletion 端点虽然 URL 格式不同，但返回体（`{ model, choices[0].message.content, usage }`）与 OpenAI 兼容。`AzureOpenAiLlmProvider` 负责：
 - 将部署 ID 注入 URL 路径（`/openai/deployments/{deployment-id}/chat/completions`）
+- 追加 `?api-version={api-version}` 查询参数（**Azure 强制要求**，缺失时 endpoint 返回 HTTP 404）
 - 使用 `api-key` Header 而非 `Authorization: Bearer`
 
 ### E1：单 active provider 模式保持
@@ -62,7 +63,7 @@ Azure OpenAI 的 ChatCompletion 端点虽然 URL 格式不同，但返回体（`
 
 ### F1：配置优先级保持
 
-环境变量 > dotnet user-secrets > appsettings.{Environment}.json > appsettings.json。`LLM_PROVIDERS_AZUREOPENAI_APIKEY` / `LLM_PROVIDERS_AZUREOPENAI_ENDPOINT` / `LLM_PROVIDERS_AZUREOPENAI_DEPLOYMENTID` 覆盖配置文件。
+环境变量 > dotnet user-secrets > appsettings.{Environment}.json > appsettings.json。`LLM_PROVIDERS_AZUREOPENAI_APIKEY` / `LLM_PROVIDERS_AZUREOPENAI_ENDPOINT` / `LLM_PROVIDERS_AZUREOPENAI_DEPLOYMENTID` / `LLM_PROVIDERS_AZUREOPENAI_APIVERSION` 覆盖配置文件。`ApiVersion` 留空时回退到 `LlmAzureOpenAiProviderOptions.DefaultApiVersion`（当前 `2024-10-21`，跟随 Azure GA 节奏维护）。
 
 ### G1：启动行为保持
 
@@ -79,7 +80,7 @@ HTTP 状态码 → `llm.*` 错误码的映射表不变；Azure 返回的 4xx/5xx
 
 ## 实施概要
 
-1. **LlmOptions 扩展** —— `Providers.AzureOpenAI` section（ApiKey、Endpoint、DeploymentId 三字段）。
+1. **LlmOptions 扩展** —— `Providers.AzureOpenAI` section（ApiKey、Endpoint、DeploymentId、ApiVersion 四字段；ApiVersion 留空时使用 `LlmAzureOpenAiProviderOptions.DefaultApiVersion`）。
 
 2. **AzureOpenAiLlmProvider** —— `internal sealed` 类实现 `ILlmProvider`，依赖 `IHttpClientFactory` + `IOptionsMonitor<LlmOptions>`，调用 OpenAiCompatibleClient 前改写请求 HTTP Header（`api-key` 替代 Bearer）。
 
@@ -94,7 +95,7 @@ HTTP 状态码 → `llm.*` 错误码的映射表不变；Azure 返回的 4xx/5xx
      "Providers": {
        "OpenAI": { "ApiKey": "", "BaseUrl": "...", "Model": "..." },
        "DeepSeek": { "ApiKey": "", "BaseUrl": "...", "Model": "..." },
-       "AzureOpenAI": { "ApiKey": "", "Endpoint": "", "DeploymentId": "" }
+       "AzureOpenAI": { "ApiKey": "", "Endpoint": "", "DeploymentId": "", "ApiVersion": "" }
      }
    }
    ```
@@ -112,5 +113,5 @@ HTTP 状态码 → `llm.*` 错误码的映射表不变；Azure 返回的 4xx/5xx
 
 - **V0 方案** — 不直接用 Microsoft 官方 Azure.AI.OpenAI SDK，而是依赖"Azure OpenAI API 与 OpenAI 兼容"这一假设。若该假设破裂（如微软改动 API 形态），需要升级 SDK 并修订此 ADR。
 - **auth header 差异** — Azure `api-key` vs OpenAI `Bearer` 的差异目前由 AzureOpenAiLlmProvider 单独处理；若未来有第四个 provider 引入更多差异，应考虑抽象出"auth 策略"接口。
-- **URL 构造** — Azure 的 `/openai/deployments/{id}/chat/completions` 格式由 AzureOpenAiLlmProvider 在构造 HttpClient.BaseAddress 时硬编；生产环境务必验证 Endpoint 与 DeploymentId 组合的正确性。
+- **URL 构造** — Azure 的 `/openai/deployments/{id}/chat/completions?api-version={ver}` 格式由 AzureOpenAiLlmProvider 在每次请求时拼装；生产环境务必验证 Endpoint、DeploymentId、ApiVersion 三者组合的正确性，特别是 ApiVersion 必须匹配部署支持的版本范围。
 

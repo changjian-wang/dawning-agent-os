@@ -104,6 +104,15 @@ public sealed class LlmProviderOptions
 public sealed class LlmAzureOpenAiProviderOptions
 {
     /// <summary>
+    /// Default Azure OpenAI <c>api-version</c> query parameter when the user
+    /// leaves <see cref="ApiVersion"/> empty. Tracks a current GA release of
+    /// the Chat Completions surface; safe for gpt-4 / gpt-4o / gpt-4.1 family
+    /// deployments. Override per-environment when a preview-only feature is
+    /// required.
+    /// </summary>
+    public const string DefaultApiVersion = "2024-10-21";
+
+    /// <summary>
     /// API key supplied at runtime (same as ADR-028 §G2 — empty is allowed,
     /// surfacing as <c>llm.authenticationFailed</c> at call time).
     /// </summary>
@@ -121,6 +130,13 @@ public sealed class LlmAzureOpenAiProviderOptions
     /// this is the model alias managed in the Azure portal, not a full model name.
     /// </summary>
     public string DeploymentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Azure OpenAI <c>api-version</c> query parameter (e.g., <c>2024-10-21</c>).
+    /// Required by the Azure surface on every request — calls without it return
+    /// HTTP 404. Empty string falls back to <see cref="DefaultApiVersion"/>.
+    /// </summary>
+    public string ApiVersion { get; set; } = string.Empty;
 }
 
 /// <summary>

@@ -83,6 +83,9 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
 
         var httpClient = _httpClientFactory.CreateClient(HttpClientName);
         var deploymentId = azureOptions.DeploymentId;
+        var apiVersion = string.IsNullOrEmpty(azureOptions.ApiVersion)
+            ? LlmAzureOpenAiProviderOptions.DefaultApiVersion
+            : azureOptions.ApiVersion;
 
         var body = new ChatCompletionRequestBody
         {
@@ -97,10 +100,11 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
             MaxTokens = request.MaxTokens,
         };
 
-        // Azure OpenAI URL path: /openai/deployments/{deployment-id}/chat/completions
+        // Azure OpenAI URL: /openai/deployments/{deployment-id}/chat/completions?api-version={api-version}.
+        // The api-version query parameter is mandatory; calls without it return HTTP 404.
         using var requestMessage = new HttpRequestMessage(
             HttpMethod.Post,
-            $"/openai/deployments/{deploymentId}/chat/completions"
+            $"/openai/deployments/{deploymentId}/chat/completions?api-version={apiVersion}"
         )
         {
             Content = JsonContent.Create(body, options: s_jsonOptions),
