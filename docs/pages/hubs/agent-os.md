@@ -7,8 +7,8 @@ summary: dawning-agent-os wiki 的 root hub，承载主题分区与阅读起点�
 tags: [agent, meta]
 sources: []
 created: 2026-04-27
-updated: 2026-05-02
-verified_at: 2026-05-02
+updated: 2026-05-03
+verified_at: 2026-05-03
 freshness: evergreen
 status: active
 archived_reason: ""
@@ -66,6 +66,7 @@ part_of: []
 - [ADR-025 桌面进程监督：Electron 主进程拉起 .NET Api 子进程的拓扑、端口与启动 token](../adrs/desktop-process-supervisor-electron-dotnet-child.md)
 - [ADR-026 Inbox V0 数据契约与捕获面：聚合形态、表结构、UUIDv7 主键与列表分页](../adrs/inbox-v0-capture-and-list-contract.md)
 - [ADR-027 桌面渲染端 V0：原生 HTML + 预编译 preload + 通过 IPC 桥的 inbox 单页 UI](../adrs/desktop-renderer-v0-native-html-and-ipc-bridge.md)
+- [ADR-028 LLM Provider V0：ILlmProvider 抽象、OpenAI/DeepSeek 兼容客户端与 /api/llm/ping smoke 端点](../adrs/llm-provider-v0-openai-deepseek-abstraction.md)
 
 已落地规则：
 
