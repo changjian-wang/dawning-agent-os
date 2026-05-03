@@ -5,6 +5,7 @@ using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Inbox;
 using Dawning.AgentOS.Infrastructure.Hosting;
+using Dawning.AgentOS.Infrastructure.Llm.AzureOpenAi;
 using Dawning.AgentOS.Infrastructure.Llm.DeepSeek;
 using Dawning.AgentOS.Infrastructure.Llm.OpenAi;
 using Dawning.AgentOS.Infrastructure.Options;
@@ -120,6 +121,22 @@ public static class InfrastructureServiceCollectionExtensions
             }
         );
 
+        services.AddHttpClient(
+            AzureOpenAiLlmProvider.HttpClientName,
+            client =>
+            {
+                // Azure OpenAI URL construction: endpoint + /openai/deployments/{id}
+                if (
+                    !string.IsNullOrWhiteSpace(snapshot.Providers.AzureOpenAI.Endpoint)
+                    && !string.IsNullOrWhiteSpace(snapshot.Providers.AzureOpenAI.DeploymentId)
+                )
+                {
+                    var endpoint = snapshot.Providers.AzureOpenAI.Endpoint.TrimEnd('/');
+                    client.BaseAddress = new Uri(endpoint);
+                }
+            }
+        );
+
         // Register exactly one ILlmProvider per the active selection.
         // Callers receive an opaque ILlmProvider; provider-specific
         // types (OpenAiLlmProvider / DeepSeekLlmProvider) are internal.
@@ -129,26 +146,46 @@ public static class InfrastructureServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<LlmOptions>>();
             var provider = ResolveActiveProvider(sp, opts);
 
-            // ADR-028 §决策 G2: empty ApiKey is allowed at startup so
+            // ADR-028 §决策 G2 / ADR-029: empty ApiKey / Endpoint / DeploymentId are allowed at startup so
             // the rest of the surface remains usable; we surface a
             // single warning here so operators see the cause without
             // reading the source.
-            var providerOptions = string.Equals(
-                opts.ActiveProvider,
-                LlmOptions.OpenAiProviderName,
-                StringComparison.Ordinal
-            )
-                ? opts.Providers.OpenAI
-                : opts.Providers.DeepSeek;
-
-            if (string.IsNullOrEmpty(providerOptions.ApiKey))
+            if (string.Equals(opts.ActiveProvider, LlmOptions.AzureOpenAiProviderName, StringComparison.Ordinal))
             {
-                logger.LogWarning(
-                    "LLM ApiKey for active provider '{Provider}' is empty. Set via environment variable "
-                    + "(e.g., LLM_PROVIDERS_OPENAI_APIKEY for OpenAI) or dotnet user-secrets. "
-                    + "Until configured, LLM calls will return llm.authenticationFailed.",
-                    opts.ActiveProvider
-                );
+                var azureOpts = opts.Providers.AzureOpenAI;
+                if (
+                    string.IsNullOrEmpty(azureOpts.ApiKey)
+                    || string.IsNullOrEmpty(azureOpts.Endpoint)
+                    || string.IsNullOrEmpty(azureOpts.DeploymentId)
+                )
+                {
+                    logger.LogWarning(
+                        "LLM configuration for active provider 'AzureOpenAI' is incomplete. "
+                        + "Set via environment variables (LLM_PROVIDERS_AZUREOPENAI_APIKEY, "
+                        + "LLM_PROVIDERS_AZUREOPENAI_ENDPOINT, LLM_PROVIDERS_AZUREOPENAI_DEPLOYMENTID) "
+                        + "or dotnet user-secrets. Until configured, LLM calls will fail."
+                    );
+                }
+            }
+            else
+            {
+                var providerOptions = string.Equals(
+                    opts.ActiveProvider,
+                    LlmOptions.OpenAiProviderName,
+                    StringComparison.Ordinal
+                )
+                    ? opts.Providers.OpenAI
+                    : opts.Providers.DeepSeek;
+
+                if (string.IsNullOrEmpty(providerOptions.ApiKey))
+                {
+                    logger.LogWarning(
+                        "LLM ApiKey for active provider '{Provider}' is empty. Set via environment variable "
+                        + "(e.g., LLM_PROVIDERS_OPENAI_APIKEY for OpenAI) or dotnet user-secrets. "
+                        + "Until configured, LLM calls will return llm.authenticationFailed.",
+                        opts.ActiveProvider
+                    );
+                }
             }
 
             return provider;
@@ -184,13 +221,24 @@ public static class InfrastructureServiceCollectionExtensions
             return new DeepSeekLlmProvider(httpClientFactory, optionsMonitor);
         }
 
+        if (
+            string.Equals(
+                options.ActiveProvider,
+                LlmOptions.AzureOpenAiProviderName,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            return new AzureOpenAiLlmProvider(httpClientFactory, optionsMonitor);
+        }
+
         // The IValidateOptions<LlmOptions> guard runs at startup before
         // this factory is invoked, so reaching here would indicate a
         // bypassed validation chain. Throwing matches the existing
         // ArgumentException convention in this layer.
         throw new InvalidOperationException(
             $"Unknown LLM ActiveProvider '{options.ActiveProvider}'; expected "
-                + $"'{LlmOptions.OpenAiProviderName}' or '{LlmOptions.DeepSeekProviderName}'."
+                + $"'{LlmOptions.OpenAiProviderName}', '{LlmOptions.DeepSeekProviderName}', or '{LlmOptions.AzureOpenAiProviderName}'."
         );
     }
 }

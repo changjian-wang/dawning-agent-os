@@ -37,6 +37,17 @@ public class LlmOptionsValidationTests
     }
 
     [Test]
+    public void Validate_WithAzureOpenAIActiveProvider_Succeeds()
+    {
+        var sut = new LlmOptionsValidator();
+        var options = new LlmOptions { ActiveProvider = LlmOptions.AzureOpenAiProviderName };
+
+        var result = sut.Validate(name: null, options);
+
+        Assert.That(result.Succeeded, Is.True);
+    }
+
+    [Test]
     public void Validate_WithUnknownActiveProvider_Fails()
     {
         var sut = new LlmOptionsValidator();

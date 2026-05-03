@@ -42,10 +42,14 @@ public sealed class LlmOptions
     /// <summary>Canonical name for the DeepSeek provider.</summary>
     public const string DeepSeekProviderName = "DeepSeek";
 
+    /// <summary>Canonical name for the Azure OpenAI provider.</summary>
+    public const string AzureOpenAiProviderName = "AzureOpenAI";
+
     /// <summary>
     /// The provider whose <see cref="ILlmProvider"/> implementation gets
-    /// registered. Must be one of <see cref="OpenAiProviderName"/> or
-    /// <see cref="DeepSeekProviderName"/>; case-sensitive.
+    /// registered. Must be one of <see cref="OpenAiProviderName"/>,
+    /// <see cref="DeepSeekProviderName"/>, or <see cref="AzureOpenAiProviderName"/>;
+    /// case-sensitive.
     /// </summary>
     public string ActiveProvider { get; set; } = OpenAiProviderName;
 
@@ -69,6 +73,9 @@ public sealed class LlmProvidersOptions
         BaseUrl = "https://api.deepseek.com",
         Model = "deepseek-chat",
     };
+
+    /// <summary>Azure OpenAI provider settings.</summary>
+    public LlmAzureOpenAiProviderOptions AzureOpenAI { get; set; } = new();
 }
 
 /// <summary>Settings shared by every provider implementation.</summary>
@@ -89,10 +96,38 @@ public sealed class LlmProviderOptions
 }
 
 /// <summary>
+/// Azure OpenAI-specific provider settings. Per ADR-029 Azure OpenAI
+/// requires endpoint + deployment ID in addition to API key (rather than
+/// the standard BaseUrl + Model). The deployment ID is part of the URL
+/// construction and the model is inferred from the deployment.
+/// </summary>
+public sealed class LlmAzureOpenAiProviderOptions
+{
+    /// <summary>
+    /// API key supplied at runtime (same as ADR-028 §G2 — empty is allowed,
+    /// surfacing as <c>llm.authenticationFailed</c> at call time).
+    /// </summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Azure OpenAI resource endpoint (e.g., https://my-resource.openai.azure.com/).
+    /// Must include scheme and resource name; DeploymentId is appended to form
+    /// the full URL path.
+    /// </summary>
+    public string Endpoint { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Azure OpenAI deployment ID (e.g., gpt-4, gpt-4-deployment). Per ADR-029,
+    /// this is the model alias managed in the Azure portal, not a full model name.
+    /// </summary>
+    public string DeploymentId { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// IOptions validator enforcing the structural constraint of ADR-028
-/// §决策 G2: <see cref="LlmOptions.ActiveProvider"/> must name a known
-/// provider. ApiKey is intentionally <em>not</em> validated here — see
-/// the type-level remarks.
+/// §决策 G2 (and extended by ADR-029): <see cref="LlmOptions.ActiveProvider"/>
+/// must name a known provider. ApiKey / Endpoint / DeploymentId are
+/// intentionally <em>not</em> validated here — see the type-level remarks.
 /// </summary>
 public sealed class LlmOptionsValidator : IValidateOptions<LlmOptions>
 {
@@ -112,12 +147,13 @@ public sealed class LlmOptionsValidator : IValidateOptions<LlmOptions>
         if (
             !string.Equals(active, LlmOptions.OpenAiProviderName, StringComparison.Ordinal)
             && !string.Equals(active, LlmOptions.DeepSeekProviderName, StringComparison.Ordinal)
+            && !string.Equals(active, LlmOptions.AzureOpenAiProviderName, StringComparison.Ordinal)
         )
         {
             return ValidateOptionsResult.Fail(
                 $"Configuration '{LlmOptions.SectionName}:ActiveProvider' must be "
-                    + $"'{LlmOptions.OpenAiProviderName}' or '{LlmOptions.DeepSeekProviderName}'; "
-                    + $"got '{active}'."
+                    + $"'{LlmOptions.OpenAiProviderName}', '{LlmOptions.DeepSeekProviderName}', or "
+                    + $"'{LlmOptions.AzureOpenAiProviderName}'; got '{active}'."
             );
         }
 
