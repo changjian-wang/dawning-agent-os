@@ -21,8 +21,18 @@
       header {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         margin-bottom: 16px;
+      }
+      header .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      header .brand img {
+        width: 28px;
+        height: 35px;
+        flex-shrink: 0;
       }
       header h1 {
         font-size: 16px;
@@ -141,7 +151,10 @@
   </head>
   <body>
     <header>
-      <h1>dawning-agent-os · inbox V0</h1>
+      <div class="brand">
+        <img src="./assets/logo.svg" alt="dawning-agent-os" />
+        <h1>dawning-agent-os · inbox V0</h1>
+      </div>
       <span id="status" class="status">connecting…</span>
     </header>
 
