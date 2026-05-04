@@ -140,6 +140,46 @@
         opacity: 0.55;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       }
+      li .actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      li .actions button {
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+      li .summary {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #102018;
+        border: 1px solid #1f3a2a;
+        border-radius: 4px;
+      }
+      li .summary-text {
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      li .summary-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      li .summary-error {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
       .empty {
         opacity: 0.5;
         font-style: italic;
@@ -257,6 +297,78 @@
           meta.textContent = source + ' · ' + formatTimestamp(item.capturedAtUtc) + ' · ' + idShort;
           li.appendChild(content);
           li.appendChild(meta);
+
+          // ADR-030 / ADR-027 §10: per-item summarize button. Each click
+          // invokes the active LLM provider (non-idempotent), so we do
+          // not auto-trigger and we surface model + token + duration so
+          // users can feel the cost.
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          const summarizeBtn = document.createElement('button');
+          summarizeBtn.type = 'button';
+          summarizeBtn.textContent = 'Summarize';
+          actions.appendChild(summarizeBtn);
+          li.appendChild(actions);
+
+          const summaryBox = document.createElement('div');
+          summaryBox.className = 'summary';
+          summaryBox.hidden = true;
+          li.appendChild(summaryBox);
+
+          const summaryErr = document.createElement('div');
+          summaryErr.className = 'summary-error';
+          summaryErr.hidden = true;
+          li.appendChild(summaryErr);
+
+          summarizeBtn.addEventListener('click', async () => {
+            summaryErr.hidden = true;
+            summaryErr.textContent = '';
+            const previousLabel = summarizeBtn.dataset.label || 'Summarize';
+            summarizeBtn.dataset.label = previousLabel;
+            summarizeBtn.disabled = true;
+            summarizeBtn.textContent = 'Summarizing…';
+            try {
+              const result = await window.agentos.inbox.summarize(item.id);
+              if (result.ok) {
+                summaryBox.innerHTML = '';
+                const text = document.createElement('div');
+                text.className = 'summary-text';
+                text.textContent = result.value.summary;
+                summaryBox.appendChild(text);
+
+                const metaLine = document.createElement('div');
+                metaLine.className = 'summary-meta';
+                const parts = [];
+                parts.push(result.value.model || 'unknown');
+                if (typeof result.value.promptTokens === 'number'
+                    && typeof result.value.completionTokens === 'number') {
+                  parts.push('prompt ' + result.value.promptTokens
+                    + ' + completion ' + result.value.completionTokens + ' tokens');
+                }
+                if (typeof result.value.durationMs === 'number') {
+                  parts.push(result.value.durationMs + 'ms');
+                }
+                metaLine.textContent = parts.join(' · ');
+                summaryBox.appendChild(metaLine);
+
+                summaryBox.hidden = false;
+                // After a successful run the button stays as "Re-summarize"
+                // so users discover that the call is non-idempotent.
+                summarizeBtn.textContent = 'Re-summarize';
+              } else {
+                summaryErr.textContent = formatProblem(result.problem, result.status);
+                summaryErr.hidden = false;
+                summarizeBtn.textContent = previousLabel;
+              }
+            } catch (err) {
+              summaryErr.textContent = (err && err.message) ? err.message : String(err);
+              summaryErr.hidden = false;
+              summarizeBtn.textContent = previousLabel;
+            } finally {
+              summarizeBtn.disabled = false;
+            }
+          });
+
           els.list.appendChild(li);
         }
         const showing = page.items.length;

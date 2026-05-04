@@ -41,6 +41,21 @@ export interface InboxListPage {
   offset: number;
 }
 
+/**
+ * Server-side projection of the ADR-030 InboxItemSummary record. Field
+ * names mirror Api `InboxItemSummaryResponse` (camelCase by JSON
+ * convention). `promptTokens` / `completionTokens` are nullable per
+ * ADR-028 §G1 (some providers don't return usage).
+ */
+export interface InboxItemSummary {
+  itemId: string;
+  summary: string;
+  model: string;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  durationMs: number;
+}
+
 export interface InboxProblem {
   type?: string;
   title?: string;
@@ -84,6 +99,17 @@ const api = {
         "agentos:inbox:list",
         query,
       )) as InboxIpcResult<InboxListPage>;
+    },
+    /**
+     * POST /api/inbox/items/{id}/summarize via main; per ADR-030 each
+     * call invokes the active LLM provider. Non-idempotent — calling
+     * twice may return different summaries.
+     */
+    summarize: async (itemId: string): Promise<InboxIpcResult<InboxItemSummary>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:inbox:summarize",
+        itemId,
+      )) as InboxIpcResult<InboxItemSummary>;
     },
   },
 };

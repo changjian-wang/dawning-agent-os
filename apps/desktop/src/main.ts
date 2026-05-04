@@ -173,6 +173,32 @@ ipcMain.handle(
   },
 );
 
+// Per ADR-030 §G1 the renderer surfaces a per-item "summarize" button
+// that POSTs to /api/inbox/items/{id:guid}/summarize. The token stays
+// in the main process; the renderer only ships an itemId string.
+ipcMain.handle(
+  "agentos:inbox:summarize",
+  async (_event, itemId: unknown) => {
+    if (!runtime) {
+      throw new Error("runtime not initialized");
+    }
+    if (typeof itemId !== "string" || itemId.length === 0) {
+      throw new Error("itemId must be a non-empty string");
+    }
+    // GUID route constraint on the server already rejects malformed
+    // ids; we only screen for empty / non-string here so the IPC layer
+    // doesn't forward obviously broken inputs.
+    const response = await fetch(
+      `${runtime.baseUrl}/api/inbox/items/${encodeURIComponent(itemId)}/summarize`,
+      {
+        method: "POST",
+        headers: { [HEADER_NAME]: runtime.token },
+      },
+    );
+    return readBodyAsResult(response);
+  },
+);
+
 app.whenReady().then(async () => {
   try {
     runtime = await startBackend();
