@@ -7,8 +7,8 @@ summary: dawning-agent-os wiki 的 root hub，承载主题分区与阅读起点�
 tags: [agent, meta]
 sources: []
 created: 2026-04-27
-updated: 2026-05-03
-verified_at: 2026-05-03
+updated: 2026-05-05
+verified_at: 2026-05-05
 freshness: evergreen
 status: active
 archived_reason: ""
@@ -68,6 +68,8 @@ part_of: []
 - [ADR-027 桌面渲染端 V0：原生 HTML + 预编译 preload + 通过 IPC 桥的 inbox 单页 UI](../adrs/desktop-renderer-v0-native-html-and-ipc-bridge.md)
 - [ADR-028 LLM Provider V0：ILlmProvider 抽象、OpenAI/DeepSeek 兼容客户端与 /api/llm/ping smoke 端点](../adrs/llm-provider-v0-openai-deepseek-abstraction.md)
 - [ADR-029 LLM Provider 扩展：Azure OpenAI 支持](../adrs/llm-provider-azure-openai-extension.md)
+- [ADR-030 Inbox 单条总结 V0：IInboxSummaryAppService 端口、LLM 直调实现与 POST /api/inbox/items/{id}/summarize 端点](../adrs/inbox-item-summarize-v0.md)
+- [ADR-031 Inbox 单条打标签 V0：IInboxTaggingAppService 端口、JSON 数组结构化输出与 POST /api/inbox/items/{id}/tags 端点](../adrs/inbox-item-tagging-v0.md)
 
 已落地规则：
 
