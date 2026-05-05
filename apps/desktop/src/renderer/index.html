@@ -180,6 +180,46 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         white-space: pre-wrap;
       }
+      /* ADR-031 §G1: tag pill list shares the green-ish "LLM output"
+         palette of .summary so users read both as model-generated. */
+      li .tags {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #102018;
+        border: 1px solid #1f3a2a;
+        border-radius: 4px;
+      }
+      li .tag-pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      li .tag-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 12px;
+        background: #1c3422;
+        border: 1px solid #2f5a3a;
+        border-radius: 999px;
+        color: #d6f5e0;
+      }
+      li .tags-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      li .tags-error {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
       .empty {
         opacity: 0.5;
         font-style: italic;
@@ -308,6 +348,14 @@
           summarizeBtn.type = 'button';
           summarizeBtn.textContent = 'Summarize';
           actions.appendChild(summarizeBtn);
+          // ADR-031 §G1: sister "Tags" button. Same non-idempotency
+          // model — each click hits the LLM and may yield different
+          // tags. Server already normalizes (1-5 tags, 2-12 chars,
+          // dedup), so we can render the array verbatim.
+          const tagBtn = document.createElement('button');
+          tagBtn.type = 'button';
+          tagBtn.textContent = 'Tags';
+          actions.appendChild(tagBtn);
           li.appendChild(actions);
 
           const summaryBox = document.createElement('div');
@@ -319,6 +367,16 @@
           summaryErr.className = 'summary-error';
           summaryErr.hidden = true;
           li.appendChild(summaryErr);
+
+          const tagsBox = document.createElement('div');
+          tagsBox.className = 'tags';
+          tagsBox.hidden = true;
+          li.appendChild(tagsBox);
+
+          const tagsErr = document.createElement('div');
+          tagsErr.className = 'tags-error';
+          tagsErr.hidden = true;
+          li.appendChild(tagsErr);
 
           summarizeBtn.addEventListener('click', async () => {
             summaryErr.hidden = true;
@@ -366,6 +424,59 @@
               summarizeBtn.textContent = previousLabel;
             } finally {
               summarizeBtn.disabled = false;
+            }
+          });
+
+          tagBtn.addEventListener('click', async () => {
+            tagsErr.hidden = true;
+            tagsErr.textContent = '';
+            const previousLabel = tagBtn.dataset.label || 'Tags';
+            tagBtn.dataset.label = previousLabel;
+            tagBtn.disabled = true;
+            tagBtn.textContent = 'Tagging…';
+            try {
+              const result = await window.agentos.inbox.suggestTags(item.id);
+              if (result.ok) {
+                tagsBox.innerHTML = '';
+                const row = document.createElement('div');
+                row.className = 'tag-pill-row';
+                for (const tag of result.value.tags || []) {
+                  const pill = document.createElement('span');
+                  pill.className = 'tag-pill';
+                  pill.textContent = tag;
+                  row.appendChild(pill);
+                }
+                tagsBox.appendChild(row);
+
+                const metaLine = document.createElement('div');
+                metaLine.className = 'tags-meta';
+                const parts = [];
+                parts.push(result.value.model || 'unknown');
+                if (typeof result.value.promptTokens === 'number'
+                    && typeof result.value.completionTokens === 'number') {
+                  parts.push('prompt ' + result.value.promptTokens
+                    + ' + completion ' + result.value.completionTokens + ' tokens');
+                }
+                if (typeof result.value.durationMs === 'number') {
+                  parts.push(result.value.durationMs + 'ms');
+                }
+                metaLine.textContent = parts.join(' · ');
+                tagsBox.appendChild(metaLine);
+
+                tagsBox.hidden = false;
+                // Same non-idempotency relabel pattern as Summarize.
+                tagBtn.textContent = 'Re-tag';
+              } else {
+                tagsErr.textContent = formatProblem(result.problem, result.status);
+                tagsErr.hidden = false;
+                tagBtn.textContent = previousLabel;
+              }
+            } catch (err) {
+              tagsErr.textContent = (err && err.message) ? err.message : String(err);
+              tagsErr.hidden = false;
+              tagBtn.textContent = previousLabel;
+            } finally {
+              tagBtn.disabled = false;
             }
           });
 

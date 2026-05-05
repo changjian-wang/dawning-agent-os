@@ -199,6 +199,29 @@ ipcMain.handle(
   },
 );
 
+// Per ADR-031 §G1 a sister "tag" button POSTs to
+// /api/inbox/items/{id:guid}/tags and surfaces a 1-5-element tag
+// array. Same token / non-idempotency story as summarize.
+ipcMain.handle(
+  "agentos:inbox:suggestTags",
+  async (_event, itemId: unknown) => {
+    if (!runtime) {
+      throw new Error("runtime not initialized");
+    }
+    if (typeof itemId !== "string" || itemId.length === 0) {
+      throw new Error("itemId must be a non-empty string");
+    }
+    const response = await fetch(
+      `${runtime.baseUrl}/api/inbox/items/${encodeURIComponent(itemId)}/tags`,
+      {
+        method: "POST",
+        headers: { [HEADER_NAME]: runtime.token },
+      },
+    );
+    return readBodyAsResult(response);
+  },
+);
+
 app.whenReady().then(async () => {
   try {
     runtime = await startBackend();

@@ -56,6 +56,21 @@ export interface InboxItemSummary {
   durationMs: number;
 }
 
+/**
+ * Server-side projection of the ADR-031 InboxItemTags record. Field
+ * names mirror Api `InboxItemTagsResponse`. `tags` is the post
+ * AppService normalization list (1-5 open-set Chinese tags, 2-12 chars
+ * each, deduped); the renderer can render verbatim.
+ */
+export interface InboxItemTags {
+  itemId: string;
+  tags: string[];
+  model: string;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  durationMs: number;
+}
+
 export interface InboxProblem {
   type?: string;
   title?: string;
@@ -110,6 +125,19 @@ const api = {
         "agentos:inbox:summarize",
         itemId,
       )) as InboxIpcResult<InboxItemSummary>;
+    },
+    /**
+     * POST /api/inbox/items/{id}/tags via main; per ADR-031 each call
+     * invokes the active LLM provider with a JSON-array prompt. Non-
+     * idempotent — calling twice may return different tag sets. The
+     * value's `tags` array is already normalized (deduped, length-
+     * filtered, capped at 5) by the server.
+     */
+    suggestTags: async (itemId: string): Promise<InboxIpcResult<InboxItemTags>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:inbox:suggestTags",
+        itemId,
+      )) as InboxIpcResult<InboxItemTags>;
     },
   },
 };
