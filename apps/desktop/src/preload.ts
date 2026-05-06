@@ -125,6 +125,38 @@ export interface ChatCreateSessionResponse {
  * SSE `event:` line; the per-frame fields are extracted from the
  * `data:` JSON payload.
  */
+/**
+ * Server-side projection of the ADR-033 MemoryLedgerEntry aggregate.
+ * Per ADR-033 §决策 J1 / ADR-023 layering rule the Api ships
+ * <c>source / sensitivity / status</c> as PascalCase strings (not
+ * Domain enums) so the wire contract is decoupled from CLR int
+ * values. The renderer renders these strings verbatim. <c>deletedAt</c>
+ * is non-null exactly when <c>status === "SoftDeleted"</c>.
+ */
+export interface MemoryEntry {
+  id: string;
+  content: string;
+  scope: string;
+  /** ADR-033 §决策 B1: V0 only writes "UserExplicit"; future revisions may add Conversation / InboxAction / Correction. */
+  source: string;
+  isExplicit: boolean;
+  confidence: number;
+  /** "Normal" / "Sensitive" / "HighSensitive" — ADR-033 §决策 D1. */
+  sensitivity: string;
+  /** "Active" / "Corrected" / "Archived" / "SoftDeleted" — ADR-033 §决策 E1. */
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface MemoryListPage {
+  items: MemoryEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export type ChatStreamFrame =
   | { kind: "chunk"; delta: string }
   | {
@@ -259,6 +291,92 @@ const api = {
       } finally {
         ipcRenderer.off(channel, handler);
       }
+    },
+  },
+  /**
+   * ADR-033 Memory Ledger V0 — six fetch-and-forward methods that
+   * mirror the inbox / chat surface. The startup token never leaves
+   * main; renderer only ships the request payload. <c>create / list /
+   * getById / update / softDelete</c> wrap the matching REST verb
+   * one-to-one; <c>restore</c> is sugar for <c>update(id, { status:
+   * "Active" })</c> so the renderer can keep its "show soft-deleted"
+   * code path readable.
+   */
+  memory: {
+    /** POST /api/memory via main; only Source=UserExplicit is accepted server-side. */
+    create: async (req: {
+      content: string;
+      scope?: string;
+      sensitivity?: string;
+    }): Promise<InboxIpcResult<MemoryEntry>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:memory:create",
+        req,
+      )) as InboxIpcResult<MemoryEntry>;
+    },
+    /**
+     * GET /api/memory via main; ordered by updated_at_utc DESC, id DESC.
+     * <c>status</c> filter is "Active" / "Corrected" / "Archived" /
+     * "SoftDeleted" or omitted; <c>includeSoftDeleted</c> defaults to
+     * false, so the renderer must opt in to see deleted rows.
+     */
+    list: async (
+      query: {
+        limit?: number;
+        offset?: number;
+        status?: string;
+        includeSoftDeleted?: boolean;
+      } = {},
+    ): Promise<InboxIpcResult<MemoryListPage>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:memory:list",
+        query,
+      )) as InboxIpcResult<MemoryListPage>;
+    },
+    /** GET /api/memory/{id} via main; 404 surfaces as ok=false / status=404. */
+    getById: async (id: string): Promise<InboxIpcResult<MemoryEntry>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:memory:get-by-id",
+        id,
+      )) as InboxIpcResult<MemoryEntry>;
+    },
+    /**
+     * PATCH /api/memory/{id} via main. All four fields are optional;
+     * passing all-null returns <c>memory.update.empty</c> (HTTP 400)
+     * via the AppService.
+     */
+    update: async (
+      id: string,
+      req: {
+        content?: string;
+        scope?: string;
+        sensitivity?: string;
+        status?: string;
+      },
+    ): Promise<InboxIpcResult<MemoryEntry>> => {
+      return (await ipcRenderer.invoke("agentos:memory:update", {
+        id,
+        request: req,
+      })) as InboxIpcResult<MemoryEntry>;
+    },
+    /** DELETE /api/memory/{id} via main; soft-delete (status → SoftDeleted, deletedAt stamped). */
+    softDelete: async (id: string): Promise<InboxIpcResult<MemoryEntry>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:memory:soft-delete",
+        id,
+      )) as InboxIpcResult<MemoryEntry>;
+    },
+    /**
+     * Sugar over <c>update(id, { status: "Active" })</c>; the server
+     * enforces the SoftDeleted → Active transition rule. Useful so the
+     * renderer can keep "Restore" button code separate from generic
+     * edit code.
+     */
+    restore: async (id: string): Promise<InboxIpcResult<MemoryEntry>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:memory:restore",
+        id,
+      )) as InboxIpcResult<MemoryEntry>;
     },
   },
 };

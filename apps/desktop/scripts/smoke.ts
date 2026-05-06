@@ -197,6 +197,187 @@ async function probeChatSessionLifecycle(
   );
 }
 
+interface MemoryEntry {
+  id: string;
+  content: string;
+  scope: string;
+  source: string;
+  isExplicit: boolean;
+  confidence: number;
+  sensitivity: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+interface MemoryListPage {
+  items: MemoryEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Per ADR-033 §决策 J1 / §M3 the memory lifecycle smoke probe
+ * exercises POST → GET list → PATCH → DELETE → list-default →
+ * list-with-soft-deleted, asserting:
+ * <list type="bullet">
+ *   <item><description>UUIDv7 id on POST.</description></item>
+ *   <item><description>Source forced to <c>UserExplicit</c> per §决策 B1.</description></item>
+ *   <item><description>PATCH echoes the new content / status.</description></item>
+ *   <item><description>DELETE soft-deletes (status=SoftDeleted, deletedAt non-null).</description></item>
+ *   <item><description>Default list filters soft-deleted rows out.</description></item>
+ *   <item><description><c>includeSoftDeleted=true</c> brings them back.</description></item>
+ * </list>
+ */
+async function probeMemoryLifecycle(
+  baseUrl: string,
+  token: string,
+): Promise<void> {
+  const root = baseUrl.replace(/\/+$/u, "");
+  const fetchJson = async <T>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<{ status: number; body: T }> => {
+    const response = await fetch(`${root}${path}`, {
+      ...init,
+      headers: {
+        [HEADER_NAME]: token,
+        ...((init?.body !== undefined && {
+          "Content-Type": "application/json",
+        }) || {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(
+        `${init?.method ?? "GET"} ${path} returned ${response.status} ${response.statusText}`,
+      );
+    }
+    const body = (await response.json()) as T;
+    return { status: response.status, body };
+  };
+
+  const captureContent = `smoke memory @ ${new Date().toISOString()}`;
+  const created = (
+    await fetchJson<MemoryEntry>("/api/memory", {
+      method: "POST",
+      body: JSON.stringify({
+        content: captureContent,
+        scope: "smoke",
+        sensitivity: "Sensitive",
+      }),
+    })
+  ).body;
+  if (!UUIDV7_PATTERN.test(created.id)) {
+    throw new Error(`POST /api/memory returned non-UUIDv7 id: '${created.id}'`);
+  }
+  if (created.source !== "UserExplicit") {
+    throw new Error(
+      `POST /api/memory returned source='${created.source}', expected 'UserExplicit' per ADR-033 §决策 B1`,
+    );
+  }
+  if (created.status !== "Active") {
+    throw new Error(
+      `POST /api/memory returned status='${created.status}', expected 'Active'`,
+    );
+  }
+  if (created.sensitivity !== "Sensitive") {
+    throw new Error(
+      `POST /api/memory returned sensitivity='${created.sensitivity}', expected 'Sensitive'`,
+    );
+  }
+  if (created.content !== captureContent) {
+    throw new Error(
+      `POST /api/memory echoed wrong content: expected '${captureContent}', got '${created.content}'`,
+    );
+  }
+
+  // PATCH content + status. Active → Corrected is a legal transition.
+  const patchedContent = `${captureContent} (corrected)`;
+  const patched = (
+    await fetchJson<MemoryEntry>(
+      `/api/memory/${encodeURIComponent(created.id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          content: patchedContent,
+          scope: null,
+          sensitivity: null,
+          status: "Corrected",
+        }),
+      },
+    )
+  ).body;
+  if (patched.id !== created.id) {
+    throw new Error(
+      `PATCH /api/memory/{id} returned id '${patched.id}' ≠ '${created.id}'`,
+    );
+  }
+  if (patched.content !== patchedContent) {
+    throw new Error(
+      `PATCH /api/memory/{id} echoed wrong content: expected '${patchedContent}', got '${patched.content}'`,
+    );
+  }
+  if (patched.status !== "Corrected") {
+    throw new Error(
+      `PATCH /api/memory/{id} returned status='${patched.status}', expected 'Corrected'`,
+    );
+  }
+
+  // DELETE → soft-delete. Server returns the deleted entry so we can
+  // confirm deletedAt got stamped without an extra GET.
+  const deleted = (
+    await fetchJson<MemoryEntry>(
+      `/api/memory/${encodeURIComponent(created.id)}`,
+      { method: "DELETE" },
+    )
+  ).body;
+  if (deleted.status !== "SoftDeleted") {
+    throw new Error(
+      `DELETE /api/memory/{id} returned status='${deleted.status}', expected 'SoftDeleted'`,
+    );
+  }
+  if (deleted.deletedAt === null) {
+    throw new Error(
+      `DELETE /api/memory/{id} returned deletedAt=null; expected an ISO timestamp`,
+    );
+  }
+
+  // Default list — soft-deleted rows are hidden.
+  const liveList = (
+    await fetchJson<MemoryListPage>(`/api/memory?limit=100&offset=0`)
+  ).body;
+  if (liveList.items.some((item) => item.id === created.id)) {
+    throw new Error(
+      `GET /api/memory (default) included soft-deleted id '${created.id}'`,
+    );
+  }
+
+  // includeSoftDeleted=true brings it back.
+  const fullList = (
+    await fetchJson<MemoryListPage>(
+      `/api/memory?limit=100&offset=0&includeSoftDeleted=true`,
+    )
+  ).body;
+  const found = fullList.items.find((item) => item.id === created.id);
+  if (found === undefined) {
+    throw new Error(
+      `GET /api/memory?includeSoftDeleted=true did not include soft-deleted id '${created.id}'`,
+    );
+  }
+  if (found.status !== "SoftDeleted") {
+    throw new Error(
+      `GET /api/memory?includeSoftDeleted=true returned status='${found.status}' for the deleted entry, expected 'SoftDeleted'`,
+    );
+  }
+
+  console.log(
+    `[smoke] memory lifecycle ok (id=${created.id}, hidden_from_default=true, visible_with_flag=true)`,
+  );
+}
+
 async function main(): Promise<void> {
   const token = randomUUID();
   // Smoke runs do not stream stdout to console by default — the
@@ -246,6 +427,8 @@ async function main(): Promise<void> {
     );
 
     await probeChatSessionLifecycle(baseUrl, token);
+
+    await probeMemoryLifecycle(baseUrl, token);
 
     console.log("[smoke] PASS");
   } catch (err) {

@@ -466,6 +466,183 @@ ipcMain.handle(
   },
 );
 
+// =====================================================================
+// Memory Ledger V0 IPC handlers — per ADR-033 §决策 J1 / K1.
+//
+// Six fetch-and-forward handlers mirroring the inbox layout. The
+// renderer ships request payloads; main attaches the startup token and
+// returns the parsed JSON Result. <c>restore</c> is sugar for "PATCH
+// status=Active" so the renderer's "show soft-deleted" UI can call a
+// dedicated channel and keep its branching readable.
+// =====================================================================
+
+ipcMain.handle(
+  "agentos:memory:create",
+  async (
+    _event,
+    req: { content?: unknown; scope?: unknown; sensitivity?: unknown },
+  ) => {
+    if (!runtime) {
+      throw new Error("runtime not initialized");
+    }
+    const body = JSON.stringify({
+      content: typeof req?.content === "string" ? req.content : "",
+      scope: typeof req?.scope === "string" ? req.scope : null,
+      sensitivity: typeof req?.sensitivity === "string" ? req.sensitivity : null,
+    });
+    const response = await fetch(`${runtime.baseUrl}/api/memory`, {
+      method: "POST",
+      headers: {
+        [HEADER_NAME]: runtime.token,
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+    return readBodyAsResult(response);
+  },
+);
+
+ipcMain.handle(
+  "agentos:memory:list",
+  async (
+    _event,
+    query: {
+      limit?: unknown;
+      offset?: unknown;
+      status?: unknown;
+      includeSoftDeleted?: unknown;
+    },
+  ) => {
+    if (!runtime) {
+      throw new Error("runtime not initialized");
+    }
+    const limit =
+      typeof query?.limit === "number" && Number.isFinite(query.limit)
+        ? query.limit
+        : 50;
+    const offset =
+      typeof query?.offset === "number" && Number.isFinite(query.offset)
+        ? query.offset
+        : 0;
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    if (typeof query?.status === "string" && query.status.length > 0) {
+      params.set("status", query.status);
+    }
+    if (query?.includeSoftDeleted === true) {
+      params.set("includeSoftDeleted", "true");
+    }
+    const url = `${runtime.baseUrl}/api/memory?${params.toString()}`;
+    const response = await fetch(url, {
+      headers: { [HEADER_NAME]: runtime.token },
+    });
+    return readBodyAsResult(response);
+  },
+);
+
+ipcMain.handle("agentos:memory:get-by-id", async (_event, id: unknown) => {
+  if (!runtime) {
+    throw new Error("runtime not initialized");
+  }
+  if (typeof id !== "string" || id.length === 0) {
+    throw new Error("id must be a non-empty string");
+  }
+  const response = await fetch(
+    `${runtime.baseUrl}/api/memory/${encodeURIComponent(id)}`,
+    { headers: { [HEADER_NAME]: runtime.token } },
+  );
+  return readBodyAsResult(response);
+});
+
+ipcMain.handle(
+  "agentos:memory:update",
+  async (
+    _event,
+    payload: {
+      id?: unknown;
+      request?: {
+        content?: unknown;
+        scope?: unknown;
+        sensitivity?: unknown;
+        status?: unknown;
+      };
+    },
+  ) => {
+    if (!runtime) {
+      throw new Error("runtime not initialized");
+    }
+    if (typeof payload?.id !== "string" || payload.id.length === 0) {
+      throw new Error("id must be a non-empty string");
+    }
+    const req = payload.request ?? {};
+    const body = JSON.stringify({
+      content: typeof req?.content === "string" ? req.content : null,
+      scope: typeof req?.scope === "string" ? req.scope : null,
+      sensitivity: typeof req?.sensitivity === "string" ? req.sensitivity : null,
+      status: typeof req?.status === "string" ? req.status : null,
+    });
+    const response = await fetch(
+      `${runtime.baseUrl}/api/memory/${encodeURIComponent(payload.id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          [HEADER_NAME]: runtime.token,
+          "Content-Type": "application/json",
+        },
+        body,
+      },
+    );
+    return readBodyAsResult(response);
+  },
+);
+
+ipcMain.handle("agentos:memory:soft-delete", async (_event, id: unknown) => {
+  if (!runtime) {
+    throw new Error("runtime not initialized");
+  }
+  if (typeof id !== "string" || id.length === 0) {
+    throw new Error("id must be a non-empty string");
+  }
+  const response = await fetch(
+    `${runtime.baseUrl}/api/memory/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: { [HEADER_NAME]: runtime.token },
+    },
+  );
+  return readBodyAsResult(response);
+});
+
+// Restore is "PATCH status=Active". The server enforces the
+// SoftDeleted → Active transition rule (ADR-033 §决策 E1); a restore
+// against a non-soft-deleted entry no-ops on the server side.
+ipcMain.handle("agentos:memory:restore", async (_event, id: unknown) => {
+  if (!runtime) {
+    throw new Error("runtime not initialized");
+  }
+  if (typeof id !== "string" || id.length === 0) {
+    throw new Error("id must be a non-empty string");
+  }
+  const response = await fetch(
+    `${runtime.baseUrl}/api/memory/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        [HEADER_NAME]: runtime.token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: null,
+        scope: null,
+        sensitivity: null,
+        status: "Active",
+      }),
+    },
+  );
+  return readBodyAsResult(response);
+});
+
 app.whenReady().then(async () => {
   try {
     runtime = await startBackend();

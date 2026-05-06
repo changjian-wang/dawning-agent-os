@@ -403,6 +403,253 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         white-space: pre-wrap;
       }
+
+      /* =========================================================
+         View system — ADR-033 §决策 K1.
+         Two top-level views ("chat & inbox" and "memory") share the
+         same window; only one is visible at a time, controlled by a
+         hash route (#chat-inbox / #memory) and a header view-switcher.
+         The hidden view is detached visually but stays in the DOM so
+         its state (chat session, scroll position, capture textarea)
+         survives a switch.
+         ========================================================= */
+      .view {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .view[hidden] { display: none; }
+
+      .view-switcher {
+        display: flex;
+        gap: 6px;
+      }
+      .view-switcher button {
+        padding: 4px 12px;
+        font-size: 12px;
+        background: #1f1f1f;
+        border: 1px solid #2a2a2a;
+        border-radius: 999px;
+        color: #d5d5d5;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .view-switcher button:hover { background: #262626; }
+      .view-switcher button.active {
+        background: #1c3422;
+        border-color: #2f5a3a;
+        color: #d6f5e0;
+      }
+
+      /* =========================================================
+         Memory pane — ADR-033 §决策 K1.
+         Two-column layout (40/60): left is a list ordered by
+         updated_at_utc DESC; right is the detail / edit panel which
+         doubles as the "+ 新记忆" composer when no row is selected.
+         The toolbar above the list owns "+ 新记忆" and the "显示已删除"
+         toggle so users can flip between live and archive views
+         without losing their selection.
+         ========================================================= */
+      .memory-toolbar {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 20px;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .memory-toolbar .spacer { flex: 1; }
+      .memory-toolbar label {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        opacity: 0.75;
+        cursor: pointer;
+      }
+      .memory-toolbar input[type="checkbox"] {
+        margin: 0;
+        accent-color: #4ade80;
+      }
+      .memory-toolbar .count {
+        font-size: 12px;
+        opacity: 0.55;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .memory-split {
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(280px, 40fr) minmax(320px, 60fr);
+        min-height: 0;
+      }
+      .memory-list-pane {
+        border-right: 1px solid #2a2a2a;
+        overflow-y: auto;
+        padding: 12px 16px;
+      }
+      .memory-detail-pane {
+        overflow-y: auto;
+        padding: 16px 20px;
+      }
+      .memory-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .memory-list li {
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        padding: 10px 12px;
+        cursor: pointer;
+        margin: 0;
+      }
+      .memory-list li:hover { background: #131313; }
+      .memory-list li.active {
+        border-color: #2f5a3a;
+        background: #102018;
+      }
+      .memory-list li.deleted {
+        opacity: 0.55;
+      }
+      .memory-list li.deleted .row-content {
+        text-decoration: line-through;
+      }
+      .memory-list .row-content {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin-bottom: 6px;
+        max-height: 4.6em;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+      }
+      .memory-list .row-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 11px;
+        opacity: 0.6;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .memory-list .badge {
+        padding: 1px 6px;
+        border: 1px solid #2a2a2a;
+        border-radius: 999px;
+        background: #161616;
+      }
+      .memory-list .badge.status-active { color: #d6f5e0; border-color: #2f5a3a; }
+      .memory-list .badge.status-corrected { color: #fde68a; border-color: #5a4a1d; }
+      .memory-list .badge.status-archived { color: #cbd5e1; border-color: #3a3a3a; }
+      .memory-list .badge.status-softdeleted { color: #f87171; border-color: #5a1d1d; }
+      .memory-list .badge.sens-sensitive { color: #fde68a; border-color: #5a4a1d; }
+      .memory-list .badge.sens-highsensitive { color: #f87171; border-color: #5a1d1d; }
+
+      .memory-empty {
+        opacity: 0.5;
+        font-style: italic;
+        font-size: 13px;
+        padding: 24px 12px;
+        text-align: center;
+      }
+
+      .memory-detail h2 {
+        font-size: 14px;
+        font-weight: 500;
+        margin: 0 0 12px 0;
+        opacity: 0.85;
+      }
+      .memory-detail .form-row {
+        margin-bottom: 12px;
+      }
+      .memory-detail label {
+        display: block;
+        font-size: 12px;
+        opacity: 0.7;
+        margin-bottom: 4px;
+      }
+      .memory-detail textarea,
+      .memory-detail input[type="text"],
+      .memory-detail select {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        color: #f5f5f5;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 8px 10px;
+        outline: none;
+      }
+      .memory-detail textarea {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        resize: vertical;
+        min-height: 140px;
+      }
+      .memory-detail textarea:focus,
+      .memory-detail input[type="text"]:focus,
+      .memory-detail select:focus { border-color: #4ade80; }
+
+      .memory-detail .form-meta {
+        margin-top: 16px;
+        padding: 10px 12px;
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        font-size: 11px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        opacity: 0.65;
+        line-height: 1.7;
+      }
+      .memory-detail .form-meta .kv { display: flex; gap: 8px; }
+      .memory-detail .form-meta .k {
+        min-width: 90px;
+        opacity: 0.7;
+      }
+
+      .memory-detail .form-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid #2a2a2a;
+      }
+      .memory-detail .form-actions .spacer { flex: 1; }
+      .memory-detail button.danger {
+        background: #2a0d0d;
+        border-color: #5a1d1d;
+        color: #f87171;
+      }
+      .memory-detail button.danger:hover:not(:disabled) {
+        background: #3a1212;
+      }
+      .memory-detail button.warn {
+        background: #2a200d;
+        border-color: #5a4a1d;
+        color: #fde68a;
+      }
+      .memory-detail button.warn:hover:not(:disabled) { background: #3a2c12; }
+
+      .memory-detail .error {
+        margin-top: 12px;
+      }
+      .memory-detail .placeholder {
+        opacity: 0.55;
+        font-style: italic;
+        font-size: 13px;
+        padding: 24px 0;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -411,9 +658,25 @@
         <img src="./assets/logo.svg" alt="dawning-agent-os" />
         <h1>dawning-agent-os · chat V0</h1>
       </div>
+      <!-- ADR-033 §决策 K1: top-level view-switcher between the
+           chat+inbox split and the memory ledger pane. Hash route
+           drives the truth (#chat-inbox / #memory) so reload preserves
+           the user's view choice. -->
+      <div class="view-switcher" role="tablist" aria-label="view">
+        <button id="view-btn-chat-inbox" type="button" class="active" role="tab" aria-selected="true">
+          💬 chat &amp; inbox
+        </button>
+        <button id="view-btn-memory" type="button" role="tab" aria-selected="false">
+          📒 memory
+        </button>
+      </div>
       <span id="status" class="status">connecting…</span>
     </header>
 
+    <!-- ADR-033 §决策 K1: existing chat+inbox split is now wrapped in
+         a `view` container so it can be hidden when the user flips
+         to the memory ledger view. -->
+    <div id="view-chat-inbox" class="view">
     <!-- Per ADR-032 §决策 A1: 65/35 split. Chat is the primary pane. -->
     <div class="split">
       <main class="chat-pane" aria-label="chat">
@@ -461,6 +724,81 @@
         </section>
       </aside>
     </div>
+    </div><!-- /#view-chat-inbox -->
+
+    <!-- ADR-033 §决策 K1: memory ledger pane. Two-column layout
+         (40/60): left = list ordered by updated_at_utc DESC, right =
+         detail / edit panel. The detail pane doubles as the "+ 新记忆"
+         composer when no row is selected. -->
+    <div id="view-memory" class="view" hidden>
+      <div class="memory-toolbar">
+        <button id="memory-new-btn" class="primary" type="button">+ 新记忆</button>
+        <button id="memory-refresh-btn" type="button">Refresh</button>
+        <label>
+          <input id="memory-show-deleted" type="checkbox" />
+          显示已删除
+        </label>
+        <span class="spacer"></span>
+        <span id="memory-count" class="count">—</span>
+      </div>
+      <div class="memory-split">
+        <aside class="memory-list-pane" aria-label="memory list">
+          <ul id="memory-list" class="memory-list"></ul>
+          <div id="memory-list-empty" class="memory-empty" hidden>
+            尚无记忆 · 点击 "+ 新记忆" 开始
+          </div>
+          <div id="memory-list-error" class="error" hidden></div>
+        </aside>
+        <main id="memory-detail" class="memory-detail-pane memory-detail" aria-label="memory detail">
+          <div id="memory-placeholder" class="placeholder">
+            从左侧选择一条记忆查看详情，或点击 "+ 新记忆"。
+          </div>
+          <div id="memory-form" hidden>
+            <h2 id="memory-form-title">新建记忆</h2>
+            <div class="form-row">
+              <label for="memory-content">内容（≤ 4096 chars）</label>
+              <textarea id="memory-content" rows="6" placeholder="用主语第一人称写下要记住的事实……"></textarea>
+            </div>
+            <div class="form-row">
+              <label for="memory-scope">作用域 scope（可选；默认 "global"，≤ 128 chars）</label>
+              <input id="memory-scope" type="text" placeholder="global / project:dawning / …" />
+            </div>
+            <div class="form-row">
+              <label for="memory-sensitivity">敏感度 sensitivity</label>
+              <select id="memory-sensitivity">
+                <option value="Normal">Normal</option>
+                <option value="Sensitive">Sensitive</option>
+                <option value="HighSensitive">HighSensitive</option>
+              </select>
+            </div>
+            <div class="form-row" id="memory-status-row" hidden>
+              <label for="memory-status">状态 status</label>
+              <select id="memory-status">
+                <option value="Active">Active</option>
+                <option value="Corrected">Corrected</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
+            <div class="form-meta" id="memory-meta" hidden>
+              <div class="kv"><span class="k">id</span><span id="meta-id"></span></div>
+              <div class="kv"><span class="k">source</span><span id="meta-source"></span></div>
+              <div class="kv"><span class="k">confidence</span><span id="meta-confidence"></span></div>
+              <div class="kv"><span class="k">created</span><span id="meta-created"></span></div>
+              <div class="kv"><span class="k">updated</span><span id="meta-updated"></span></div>
+              <div class="kv" id="meta-deleted-row" hidden><span class="k">deleted</span><span id="meta-deleted"></span></div>
+            </div>
+            <div id="memory-form-error" class="error" hidden></div>
+            <div class="form-actions">
+              <button id="memory-save-btn" class="primary" type="button">保存</button>
+              <button id="memory-cancel-btn" type="button">取消</button>
+              <span class="spacer"></span>
+              <button id="memory-restore-btn" class="warn" type="button" hidden>恢复</button>
+              <button id="memory-delete-btn" class="danger" type="button" hidden>软删</button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div><!-- /#view-memory -->
 
     <script>
       // Per ADR-027 §1 / §6 / §7 this script is intentionally inline.
@@ -1093,6 +1431,487 @@
         return { init };
       })();
 
+      // ===========================================================
+      // Memory ledger module — ADR-033 §决策 K1.
+      //
+      //   - List ordered by updated_at_utc DESC, id DESC (server-side).
+      //   - "+ 新记忆" puts the right pane in CREATE mode (empty form).
+      //   - Selecting a row puts the right pane in EDIT mode and
+      //     prefills content / scope / sensitivity / status fields.
+      //   - "保存" branches: CREATE → POST /api/memory; EDIT → PATCH
+      //     /api/memory/{id} with whatever fields actually changed
+      //     (server returns memory.update.empty if all-null, but we
+      //     guard renderer-side too so the user gets a friendlier
+      //     "没有改动" hint without round-trip).
+      //   - "软删" is a confirm + DELETE. The list reloads under the
+      //     current "显示已删除" toggle, so the row vanishes by default
+      //     and reappears greyed-out with "恢复" available when toggle
+      //     is on.
+      //   - "恢复" calls the dedicated restore IPC (PATCH status=Active);
+      //     server enforces the SoftDeleted → Active transition rule.
+      // ===========================================================
+      const memoryBridge = window.agentos && window.agentos.memory;
+      const memory = (() => {
+        const listEl = $('memory-list');
+        const listEmpty = $('memory-list-empty');
+        const listErr = $('memory-list-error');
+        const countEl = $('memory-count');
+        const newBtn = $('memory-new-btn');
+        const refreshBtn = $('memory-refresh-btn');
+        const showDeletedToggle = $('memory-show-deleted');
+        const placeholder = $('memory-placeholder');
+        const form = $('memory-form');
+        const formTitle = $('memory-form-title');
+        const contentInput = $('memory-content');
+        const scopeInput = $('memory-scope');
+        const sensInput = $('memory-sensitivity');
+        const statusRow = $('memory-status-row');
+        const statusInput = $('memory-status');
+        const metaBox = $('memory-meta');
+        const metaId = $('meta-id');
+        const metaSource = $('meta-source');
+        const metaConfidence = $('meta-confidence');
+        const metaCreated = $('meta-created');
+        const metaUpdated = $('meta-updated');
+        const metaDeletedRow = $('meta-deleted-row');
+        const metaDeleted = $('meta-deleted');
+        const formErr = $('memory-form-error');
+        const saveBtn = $('memory-save-btn');
+        const cancelBtn = $('memory-cancel-btn');
+        const deleteBtn = $('memory-delete-btn');
+        const restoreBtn = $('memory-restore-btn');
+
+        let entries = [];
+        let mode = 'idle'; // 'idle' | 'create' | 'edit'
+        let selectedId = null;
+        // While a row is in EDIT mode this is the snapshot we PATCH-diff
+        // against so we can omit unchanged fields (avoiding redundant
+        // server-side state-machine checks).
+        let original = null;
+        let listVersion = 0;
+
+        const showFormErr = (text) => {
+          formErr.textContent = text;
+          formErr.removeAttribute('hidden');
+        };
+        const hideFormErr = () => {
+          formErr.setAttribute('hidden', '');
+          formErr.textContent = '';
+        };
+        const showListErr = (text) => {
+          listErr.textContent = text;
+          listErr.removeAttribute('hidden');
+        };
+        const hideListErr = () => {
+          listErr.setAttribute('hidden', '');
+          listErr.textContent = '';
+        };
+
+        const showPlaceholder = () => {
+          placeholder.removeAttribute('hidden');
+          form.setAttribute('hidden', '');
+        };
+        const showForm = () => {
+          placeholder.setAttribute('hidden', '');
+          form.removeAttribute('hidden');
+        };
+
+        const setListLoading = (loading) => {
+          refreshBtn.disabled = loading;
+          newBtn.disabled = loading;
+        };
+
+        const setFormBusy = (busy) => {
+          saveBtn.disabled = busy;
+          cancelBtn.disabled = busy;
+          deleteBtn.disabled = busy;
+          restoreBtn.disabled = busy;
+        };
+
+        const renderList = () => {
+          listEl.innerHTML = '';
+          if (!entries || entries.length === 0) {
+            listEmpty.removeAttribute('hidden');
+            countEl.textContent = '0 条';
+            return;
+          }
+          listEmpty.setAttribute('hidden', '');
+          for (const entry of entries) {
+            const li = document.createElement('li');
+            const isDeleted = entry.status === 'SoftDeleted';
+            li.className =
+              (entry.id === selectedId ? 'active ' : '') +
+              (isDeleted ? 'deleted' : '');
+            const content = document.createElement('div');
+            content.className = 'row-content';
+            content.textContent = entry.content;
+            li.appendChild(content);
+
+            const meta = document.createElement('div');
+            meta.className = 'row-meta';
+            const updated = formatTimestamp(entry.updatedAt);
+            const updatedSpan = document.createElement('span');
+            updatedSpan.textContent = updated;
+            meta.appendChild(updatedSpan);
+
+            const statusBadge = document.createElement('span');
+            statusBadge.className = 'badge status-' + entry.status.toLowerCase();
+            statusBadge.textContent = entry.status;
+            meta.appendChild(statusBadge);
+
+            if (entry.sensitivity && entry.sensitivity !== 'Normal') {
+              const sensBadge = document.createElement('span');
+              sensBadge.className = 'badge sens-' + entry.sensitivity.toLowerCase();
+              sensBadge.textContent = entry.sensitivity;
+              meta.appendChild(sensBadge);
+            }
+            if (entry.scope && entry.scope !== 'global') {
+              const scopeBadge = document.createElement('span');
+              scopeBadge.className = 'badge';
+              scopeBadge.textContent = entry.scope;
+              meta.appendChild(scopeBadge);
+            }
+            li.appendChild(meta);
+
+            li.addEventListener('click', () => { void selectEntry(entry.id); });
+            listEl.appendChild(li);
+          }
+          countEl.textContent = entries.length + ' 条 · 共 ' +
+            (typeof entriesTotal === 'number' ? entriesTotal : entries.length) + ' 条';
+        };
+
+        let entriesTotal = 0;
+
+        const refresh = async () => {
+          if (!memoryBridge) {
+            showListErr('preload bridge missing — run `pnpm run dev`');
+            return;
+          }
+          hideListErr();
+          setListLoading(true);
+          const ticket = ++listVersion;
+          try {
+            const includeSoftDeleted = showDeletedToggle.checked === true;
+            const result = await memoryBridge.list({
+              limit: 200,
+              offset: 0,
+              includeSoftDeleted,
+            });
+            // Drop stale responses if a newer refresh has already started.
+            if (ticket !== listVersion) return;
+            if (!result.ok) {
+              showListErr(formatProblem(result.problem, result.status));
+              entries = [];
+              entriesTotal = 0;
+              renderList();
+              return;
+            }
+            entries = (result.value && result.value.items) || [];
+            entriesTotal =
+              typeof result.value.total === 'number' ? result.value.total : entries.length;
+            renderList();
+            // If the currently-selected row vanished (toggle flipped),
+            // fall back to placeholder so the form doesn't claim to
+            // edit a row the user can no longer see.
+            if (selectedId && !entries.some((e) => e.id === selectedId)) {
+              selectedId = null;
+              mode = 'idle';
+              showPlaceholder();
+            }
+          } catch (err) {
+            if (ticket !== listVersion) return;
+            showListErr((err && err.message) ? err.message : String(err));
+          } finally {
+            if (ticket === listVersion) {
+              setListLoading(false);
+            }
+          }
+        };
+
+        const formatMeta = (entry) => {
+          metaId.textContent = entry.id;
+          metaSource.textContent = entry.source;
+          metaConfidence.textContent = String(entry.confidence);
+          metaCreated.textContent = formatTimestamp(entry.createdAt);
+          metaUpdated.textContent = formatTimestamp(entry.updatedAt);
+          if (entry.deletedAt) {
+            metaDeletedRow.removeAttribute('hidden');
+            metaDeleted.textContent = formatTimestamp(entry.deletedAt);
+          } else {
+            metaDeletedRow.setAttribute('hidden', '');
+            metaDeleted.textContent = '';
+          }
+        };
+
+        const enterCreateMode = () => {
+          hideFormErr();
+          mode = 'create';
+          selectedId = null;
+          original = null;
+          formTitle.textContent = '新建记忆';
+          contentInput.value = '';
+          scopeInput.value = '';
+          sensInput.value = 'Normal';
+          statusRow.setAttribute('hidden', '');
+          metaBox.setAttribute('hidden', '');
+          deleteBtn.setAttribute('hidden', '');
+          restoreBtn.setAttribute('hidden', '');
+          renderList();
+          showForm();
+          contentInput.focus();
+        };
+
+        const enterEditMode = (entry) => {
+          hideFormErr();
+          mode = 'edit';
+          selectedId = entry.id;
+          original = entry;
+          formTitle.textContent = '编辑记忆';
+          contentInput.value = entry.content;
+          scopeInput.value = entry.scope || '';
+          sensInput.value = entry.sensitivity;
+          statusInput.value =
+            entry.status === 'SoftDeleted' ? 'Active' : entry.status;
+          statusRow.removeAttribute('hidden');
+          metaBox.removeAttribute('hidden');
+          formatMeta(entry);
+          if (entry.status === 'SoftDeleted') {
+            // Soft-deleted rows surface "恢复" instead of "软删";
+            // status select is read-only because SoftDeleted → other
+            // statuses must go through the restore path first.
+            restoreBtn.removeAttribute('hidden');
+            deleteBtn.setAttribute('hidden', '');
+            statusInput.disabled = true;
+          } else {
+            statusInput.disabled = false;
+            deleteBtn.removeAttribute('hidden');
+            restoreBtn.setAttribute('hidden', '');
+          }
+          renderList();
+          showForm();
+        };
+
+        const selectEntry = async (id) => {
+          if (!memoryBridge) return;
+          const entry = entries.find((e) => e.id === id);
+          if (!entry) {
+            // Out of sync; reload then try again.
+            await refresh();
+            const fresh = entries.find((e) => e.id === id);
+            if (fresh) enterEditMode(fresh);
+            return;
+          }
+          enterEditMode(entry);
+        };
+
+        const cancel = () => {
+          hideFormErr();
+          mode = 'idle';
+          selectedId = null;
+          original = null;
+          renderList();
+          showPlaceholder();
+        };
+
+        const save = async () => {
+          if (!memoryBridge) return;
+          const content = contentInput.value;
+          if (!content || content.trim().length === 0) {
+            showFormErr('content: required');
+            return;
+          }
+          const scopeRaw = scopeInput.value;
+          const sensitivity = sensInput.value;
+          hideFormErr();
+          setFormBusy(true);
+          try {
+            if (mode === 'create') {
+              const req = { content };
+              const trimmedScope = scopeRaw.trim();
+              if (trimmedScope.length > 0) req.scope = trimmedScope;
+              if (sensitivity && sensitivity !== 'Normal') {
+                req.sensitivity = sensitivity;
+              }
+              const result = await memoryBridge.create(req);
+              if (!result.ok) {
+                showFormErr(formatProblem(result.problem, result.status));
+                return;
+              }
+              // Select the freshly-created entry so users can keep
+              // editing without an extra click.
+              await refresh();
+              const created = result.value;
+              const found = entries.find((e) => e.id === created.id);
+              if (found) {
+                enterEditMode(found);
+              } else {
+                // Created but not visible (filtered by toggle?). Show
+                // it in edit mode anyway so the user keeps context.
+                enterEditMode(created);
+              }
+            } else if (mode === 'edit') {
+              if (!original) {
+                showFormErr('internal: missing original entry');
+                return;
+              }
+              const patch = {};
+              if (content !== original.content) patch.content = content;
+              const trimmedScope = scopeRaw.trim();
+              const desiredScope = trimmedScope.length === 0 ? 'global' : trimmedScope;
+              if (desiredScope !== original.scope) patch.scope = desiredScope;
+              if (sensitivity !== original.sensitivity) patch.sensitivity = sensitivity;
+              if (!statusInput.disabled && statusInput.value !== original.status) {
+                patch.status = statusInput.value;
+              }
+              if (Object.keys(patch).length === 0) {
+                showFormErr('没有改动 — 请修改任意字段后再保存。');
+                return;
+              }
+              const result = await memoryBridge.update(original.id, patch);
+              if (!result.ok) {
+                showFormErr(formatProblem(result.problem, result.status));
+                return;
+              }
+              await refresh();
+              const fresh = entries.find((e) => e.id === original.id) || result.value;
+              enterEditMode(fresh);
+            }
+          } catch (err) {
+            showFormErr((err && err.message) ? err.message : String(err));
+          } finally {
+            setFormBusy(false);
+          }
+        };
+
+        const softDelete = async () => {
+          if (!memoryBridge || !original) return;
+          // Native confirm is intentionally ugly so users notice.
+          // Per ADR-033 §决策 E1 the row remains in the database with
+          // status=SoftDeleted; "恢复" puts it back to Active.
+          const ok = window.confirm('确认软删该条记忆？\n（不会物理删除；可在 "显示已删除" 中恢复。）');
+          if (!ok) return;
+          hideFormErr();
+          setFormBusy(true);
+          try {
+            const result = await memoryBridge.softDelete(original.id);
+            if (!result.ok) {
+              showFormErr(formatProblem(result.problem, result.status));
+              return;
+            }
+            const deletedId = original.id;
+            await refresh();
+            // If toggle is on, the row reappears as a soft-deleted
+            // entry; surface it in edit mode so users see "恢复" right
+            // away. Otherwise drop back to placeholder.
+            if (showDeletedToggle.checked) {
+              const fresh = entries.find((e) => e.id === deletedId);
+              if (fresh) {
+                enterEditMode(fresh);
+                return;
+              }
+            }
+            cancel();
+          } catch (err) {
+            showFormErr((err && err.message) ? err.message : String(err));
+          } finally {
+            setFormBusy(false);
+          }
+        };
+
+        const restore = async () => {
+          if (!memoryBridge || !original) return;
+          hideFormErr();
+          setFormBusy(true);
+          try {
+            const result = await memoryBridge.restore(original.id);
+            if (!result.ok) {
+              showFormErr(formatProblem(result.problem, result.status));
+              return;
+            }
+            await refresh();
+            const fresh = entries.find((e) => e.id === original.id) || result.value;
+            enterEditMode(fresh);
+          } catch (err) {
+            showFormErr((err && err.message) ? err.message : String(err));
+          } finally {
+            setFormBusy(false);
+          }
+        };
+
+        newBtn.addEventListener('click', () => { enterCreateMode(); });
+        refreshBtn.addEventListener('click', () => { void refresh(); });
+        showDeletedToggle.addEventListener('change', () => { void refresh(); });
+        saveBtn.addEventListener('click', () => { void save(); });
+        cancelBtn.addEventListener('click', () => { cancel(); });
+        deleteBtn.addEventListener('click', () => { void softDelete(); });
+        restoreBtn.addEventListener('click', () => { void restore(); });
+
+        const init = async () => {
+          if (!memoryBridge) {
+            showListErr('preload bridge missing — run `pnpm run dev`');
+            newBtn.disabled = true;
+            refreshBtn.disabled = true;
+            return;
+          }
+          await refresh();
+        };
+
+        return { init };
+      })();
+
+      // ===========================================================
+      // View-switcher — ADR-033 §决策 K1.
+      // Hash route is the source of truth; clicking either header
+      // button just sets `location.hash` and the popstate-style
+      // listener flips visibility.
+      // ===========================================================
+      const viewSwitcher = (() => {
+        const VIEWS = {
+          'chat-inbox': {
+            view: $('view-chat-inbox'),
+            button: $('view-btn-chat-inbox'),
+          },
+          memory: {
+            view: $('view-memory'),
+            button: $('view-btn-memory'),
+          },
+        };
+        let memoryInitialized = false;
+
+        const apply = () => {
+          const hash = (location.hash || '').replace(/^#/, '');
+          const target = VIEWS[hash] ? hash : 'chat-inbox';
+          for (const [key, refs] of Object.entries(VIEWS)) {
+            const active = key === target;
+            if (active) {
+              refs.view.removeAttribute('hidden');
+              refs.button.classList.add('active');
+              refs.button.setAttribute('aria-selected', 'true');
+            } else {
+              refs.view.setAttribute('hidden', '');
+              refs.button.classList.remove('active');
+              refs.button.setAttribute('aria-selected', 'false');
+            }
+          }
+          // Lazy-init memory view on first reveal so we don't eat a
+          // round-trip when the user only ever uses chat / inbox.
+          if (target === 'memory' && !memoryInitialized) {
+            memoryInitialized = true;
+            void memory.init();
+          }
+        };
+
+        const switchTo = (key) => {
+          location.hash = '#' + key;
+        };
+
+        VIEWS['chat-inbox'].button.addEventListener('click', () => { switchTo('chat-inbox'); });
+        VIEWS.memory.button.addEventListener('click', () => { switchTo('memory'); });
+        window.addEventListener('hashchange', apply);
+
+        return { apply };
+      })();
+
       if (bridgeMissing) {
         setStatus('preload bridge missing', 'err');
         showError(els.listErr, 'preload bridge missing — run `pnpm run dev` (which builds preload first)');
@@ -1101,6 +1920,9 @@
         refreshList();
         void chat.init();
       }
+      // Apply the hash route once after both modules wire up so
+      // memory.init() runs only when its view becomes visible.
+      viewSwitcher.apply();
     </script>
   </body>
 </html>
