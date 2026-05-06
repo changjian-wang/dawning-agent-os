@@ -7,10 +7,40 @@
     <!-- ============================================================== -->
     <!--                   PRODUCT RUNTIME PACKAGES                     -->
     <!-- ============================================================== -->
+    <!--
+      Per ADR-022 the Application layer takes one narrow abstractions-only
+      dependency (Microsoft.Extensions.DependencyInjection.Abstractions)
+      to host AddApplication(IServiceCollection); the concrete container
+      Microsoft.Extensions.DependencyInjection is forbidden in Application
+      by LayeringTests, and Domain.Core / Domain / Domain.Services remain
+      at zero external dependencies.
+
+      ADR-024 introduces the V0 persistence stack on the Infrastructure
+      layer only:
+        Microsoft.Data.Sqlite                   the ADO.NET SQLite driver.
+        Microsoft.Extensions.Hosting.Abstractions   IHostedService used by
+            SchemaInitializerHostedService to run schema bootstrap before
+            the API host accepts requests.
+        Microsoft.Extensions.Options             IOptions<SqliteOptions>
+            for the test-only DatabasePath override.
+        Microsoft.Extensions.Logging.Abstractions    ILogger<T> for the
+            schema initializer's diagnostic trail.
+      Application / Domain / Domain.Services must NOT reference any of
+      these packages; LayeringTests asserts that boundary. Dapper itself
+      is deliberately deferred until the first Aggregate Repository
+      lands; S5 uses raw DbCommand.ExecuteScalarAsync for the smoke path.
+    -->
     <ItemGroup>
-        <!-- Mediator (ADR-018): MediatR v12.x Apache 2.0 -->
-        <PackageVersion Include="MediatR" Version="12.4.1" />
-        <PackageVersion Include="MediatR.Contracts" Version="2.0.1" />
+        <PackageVersion
+            Include="Microsoft.Extensions.DependencyInjection.Abstractions"
+            Version="9.0.0"
+        />
+        <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+        <PackageVersion Include="Dapper" Version="2.1.66" />
+        <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+        <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.0" />
+        <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.0" />
+        <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
     </ItemGroup>
 
     <!-- ============================================================== -->
@@ -24,5 +54,6 @@
         <PackageVersion Include="Moq" Version="4.20.72" />
         <PackageVersion Include="coverlet.collector" Version="6.0.4" />
         <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
+        <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
     </ItemGroup>
 </Project>

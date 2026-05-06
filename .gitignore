@@ -30,6 +30,11 @@ dist-electron/
 .env.*
 !.env.example
 
+## Configuration with secrets (prevent accidental commits)
+appsettings.*.local.json
+appsettings.Development.json
+appsettings.Production.json
+
 ## OS
 .DS_Store
 Thumbs.db

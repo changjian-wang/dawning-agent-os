@@ -2,12 +2,12 @@ namespace Dawning.AgentOS.Domain.Core;
 
 /// <summary>
 /// Marker interface for domain events.
-/// Inherits <see cref="MediatR.INotification"/> so events can be dispatched
-/// via <c>IMediator.Publish</c> from a pipeline behavior in the infrastructure
-/// layer. Domain.Core depends only on the <c>MediatR.Contracts</c> abstraction
-/// package; the main MediatR package must not reach the domain layer.
+/// Per ADR-022 this is a plain marker with no external dependency; dispatch
+/// is handled by the self-built <c>IDomainEventDispatcher</c> port declared
+/// in <c>Application/Abstractions</c>, with its implementation provided by
+/// the infrastructure layer.
 /// </summary>
-public interface IDomainEvent : MediatR.INotification
+public interface IDomainEvent
 {
     /// <summary>
     /// UTC timestamp at which the event was raised.

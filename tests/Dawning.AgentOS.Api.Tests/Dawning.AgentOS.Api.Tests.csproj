@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Api.Tests</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Api.Tests</AssemblyName>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="NUnit" />
+        <PackageReference Include="NUnit3TestAdapter" />
+        <PackageReference Include="NUnit.Analyzers">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Moq" />
+        <PackageReference Include="coverlet.collector">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+        <!-- Per ADR-024 §J1 the integration-test factory holds a
+             keep-alive in-memory SQLite connection so the schema
+             bootstrap survives across the IHostedService run and the
+             AppService probe. The driver is referenced here only to
+             back that test fixture; production reach into Microsoft.Data.Sqlite
+             from the Api assembly remains forbidden by LayeringTests. -->
+        <PackageReference Include="Microsoft.Data.Sqlite" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Dawning.AgentOS.Api\Dawning.AgentOS.Api.csproj" />
+    </ItemGroup>
+</Project>

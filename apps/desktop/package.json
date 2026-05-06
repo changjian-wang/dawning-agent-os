@@ -1,0 +1,23 @@
+{
+  "name": "@dawning/desktop",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Dawning Agent OS desktop shell — Electron main process + .NET Api supervisor (ADR-025).",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "pnpm run build && electron dist/main.js",
+    "smoke": "pnpm run build:preload && tsx scripts/smoke.ts",
+    "build": "pnpm run build:electron && pnpm run build:preload && pnpm run build:renderer",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:preload": "tsc -p tsconfig.preload.json && node -e \"const fs=require('node:fs');fs.rmSync('dist/preload.cjs.js',{force:true});fs.renameSync('dist/preload.js','dist/preload.cjs.js')\"",
+    "build:renderer": "node -e \"const fs=require('node:fs');fs.mkdirSync('dist/renderer/assets',{recursive:true});fs.copyFileSync('src/renderer/index.html','dist/renderer/index.html');for(const f of fs.readdirSync('src/renderer/assets')){fs.copyFileSync('src/renderer/assets/'+f,'dist/renderer/assets/'+f)}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "electron": "^33.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "~5.6.3"
+  }
+}

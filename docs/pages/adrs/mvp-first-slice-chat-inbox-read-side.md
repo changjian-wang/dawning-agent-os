@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/mvp-main-scenario-information-curation.md, pages/adrs/mvp-input-boundary-no-default-folder-reading.md, pages/adrs/explicit-memory-ledger-mvp.md, pages/adrs/interest-profile-weighting-and-decay.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/repository-shape-product-monorepo-with-wiki.md, pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/inbox-item-aggregate-v0.md]
+related: [pages/adrs/mvp-main-scenario-information-curation.md, pages/adrs/mvp-input-boundary-no-default-folder-reading.md, pages/adrs/explicit-memory-ledger-mvp.md, pages/adrs/interest-profile-weighting-and-decay.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/repository-shape-product-monorepo-with-wiki.md, pages/adrs/mvp-desktop-stack-electron-aspnetcore.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-04-28

@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';" />
+    <title>Dawning Agent OS — V0</title>
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #1a1a1a;
+        color: #f5f5f5;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      header .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      header .brand img {
+        width: 28px;
+        height: 35px;
+        flex-shrink: 0;
+      }
+      header h1 {
+        font-size: 16px;
+        font-weight: 500;
+        margin: 0;
+        opacity: 0.85;
+      }
+      header .status {
+        font-size: 12px;
+        opacity: 0.6;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      header .status.ok { color: #4ade80; opacity: 0.85; }
+      header .status.err { color: #f87171; opacity: 0.95; }
+      section { margin-bottom: 20px; }
+      label {
+        display: block;
+        font-size: 12px;
+        opacity: 0.7;
+        margin-bottom: 4px;
+      }
+      textarea, input[type="text"] {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        color: #f5f5f5;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 8px 10px;
+        outline: none;
+      }
+      textarea {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        resize: vertical;
+        min-height: 90px;
+      }
+      textarea:focus, input[type="text"]:focus {
+        border-color: #4ade80;
+      }
+      .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+      .row input[type="text"] { flex: 1; }
+      button {
+        background: #2a2a2a;
+        color: #f5f5f5;
+        border: 1px solid #3a3a3a;
+        border-radius: 4px;
+        padding: 6px 14px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button:hover { background: #333; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.primary { background: #166534; border-color: #166534; }
+      button.primary:hover:not(:disabled) { background: #15803d; }
+      .error {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+      .list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+      }
+      .list-header h2 {
+        font-size: 14px;
+        font-weight: 500;
+        margin: 0;
+        opacity: 0.85;
+      }
+      .list-header .count {
+        font-size: 12px;
+        opacity: 0.6;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      li {
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 4px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+      }
+      li .content {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin-bottom: 6px;
+      }
+      li .meta {
+        font-size: 11px;
+        opacity: 0.55;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      li .actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      li .actions button {
+        padding: 4px 10px;
+        font-size: 12px;
+      }
+      li .summary {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #102018;
+        border: 1px solid #1f3a2a;
+        border-radius: 4px;
+      }
+      li .summary-text {
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      li .summary-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      li .summary-error {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+      /* ADR-031 §G1: tag pill list shares the green-ish "LLM output"
+         palette of .summary so users read both as model-generated. */
+      li .tags {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: #102018;
+        border: 1px solid #1f3a2a;
+        border-radius: 4px;
+      }
+      li .tag-pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      li .tag-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 12px;
+        background: #1c3422;
+        border: 1px solid #2f5a3a;
+        border-radius: 999px;
+        color: #d6f5e0;
+      }
+      li .tags-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      li .tags-error {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
+      .empty {
+        opacity: 0.5;
+        font-style: italic;
+        font-size: 13px;
+        padding: 12px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="./assets/logo.svg" alt="dawning-agent-os" />
+        <h1>dawning-agent-os · inbox V0</h1>
+      </div>
+      <span id="status" class="status">connecting…</span>
+    </header>
+
+    <section>
+      <label for="content">Capture a thought (≤ 4096 chars)</label>
+      <textarea id="content" rows="4" placeholder="What's on your mind?"></textarea>
+      <div class="row">
+        <input id="source" type="text" placeholder="source (optional, ≤ 64 chars)" />
+        <button id="capture-btn" class="primary" type="button">Capture</button>
+      </div>
+      <div id="capture-error" class="error" hidden></div>
+    </section>
+
+    <section>
+      <div class="list-header">
+        <h2>Recent items</h2>
+        <span class="count" id="list-count">—</span>
+      </div>
+      <div class="row" style="margin-top: 0; margin-bottom: 8px;">
+        <button id="refresh-btn" type="button">Refresh</button>
+      </div>
+      <ul id="list"></ul>
+      <div id="list-empty" class="empty" hidden>no items yet · capture one above</div>
+      <div id="list-error" class="error" hidden></div>
+    </section>
+
+    <script>
+      // Per ADR-027 §1 / §6 / §7 this script is intentionally inline.
+      // No bundler, no framework. All HTTP goes through window.agentos.*
+      // which is provided by the preload bridge (dist/preload.cjs.js).
+      const LIST_LIMIT = 50;
+
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        status: $('status'),
+        content: $('content'),
+        source: $('source'),
+        capture: $('capture-btn'),
+        captureErr: $('capture-error'),
+        list: $('list'),
+        listCount: $('list-count'),
+        listEmpty: $('list-empty'),
+        listErr: $('list-error'),
+        refresh: $('refresh-btn'),
+      };
+
+      const bridgeMissing = !(window.agentos && window.agentos.runtime && window.agentos.inbox);
+
+      const setStatus = (text, kind) => {
+        els.status.textContent = text;
+        els.status.className = 'status ' + (kind || '');
+      };
+
+      const showError = (el, text) => {
+        el.textContent = text;
+        el.removeAttribute('hidden');
+      };
+      const hideError = (el) => { el.setAttribute('hidden', ''); el.textContent = ''; };
+
+      const formatProblem = (problem, status) => {
+        if (!problem) return 'http ' + status;
+        const parts = [];
+        if (problem.title) parts.push(problem.title);
+        if (problem.detail) parts.push(problem.detail);
+        if (problem.errors && typeof problem.errors === 'object') {
+          for (const [field, msgs] of Object.entries(problem.errors)) {
+            if (Array.isArray(msgs)) {
+              for (const msg of msgs) parts.push(field + ': ' + msg);
+            }
+          }
+        }
+        if (parts.length === 0) parts.push('http ' + status);
+        return parts.join('\n');
+      };
+
+      const formatTimestamp = (iso) => {
+        try {
+          const d = new Date(iso);
+          return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+        } catch (_) { return iso; }
+      };
+
+      const renderList = (page) => {
+        els.list.innerHTML = '';
+        if (!page.items || page.items.length === 0) {
+          els.listEmpty.removeAttribute('hidden');
+          els.listCount.textContent = '0 items';
+          return;
+        }
+        els.listEmpty.setAttribute('hidden', '');
+        for (const item of page.items) {
+          const li = document.createElement('li');
+          const content = document.createElement('div');
+          content.className = 'content';
+          content.textContent = item.content;
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const source = item.source ? item.source : '—';
+          const idShort = (item.id || '').substring(0, 8);
+          meta.textContent = source + ' · ' + formatTimestamp(item.capturedAtUtc) + ' · ' + idShort;
+          li.appendChild(content);
+          li.appendChild(meta);
+
+          // ADR-030 / ADR-027 §10: per-item summarize button. Each click
+          // invokes the active LLM provider (non-idempotent), so we do
+          // not auto-trigger and we surface model + token + duration so
+          // users can feel the cost.
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          const summarizeBtn = document.createElement('button');
+          summarizeBtn.type = 'button';
+          summarizeBtn.textContent = 'Summarize';
+          actions.appendChild(summarizeBtn);
+          // ADR-031 §G1: sister "Tags" button. Same non-idempotency
+          // model — each click hits the LLM and may yield different
+          // tags. Server already normalizes (1-5 tags, 2-12 chars,
+          // dedup), so we can render the array verbatim.
+          const tagBtn = document.createElement('button');
+          tagBtn.type = 'button';
+          tagBtn.textContent = 'Tags';
+          actions.appendChild(tagBtn);
+          li.appendChild(actions);
+
+          const summaryBox = document.createElement('div');
+          summaryBox.className = 'summary';
+          summaryBox.hidden = true;
+          li.appendChild(summaryBox);
+
+          const summaryErr = document.createElement('div');
+          summaryErr.className = 'summary-error';
+          summaryErr.hidden = true;
+          li.appendChild(summaryErr);
+
+          const tagsBox = document.createElement('div');
+          tagsBox.className = 'tags';
+          tagsBox.hidden = true;
+          li.appendChild(tagsBox);
+
+          const tagsErr = document.createElement('div');
+          tagsErr.className = 'tags-error';
+          tagsErr.hidden = true;
+          li.appendChild(tagsErr);
+
+          summarizeBtn.addEventListener('click', async () => {
+            summaryErr.hidden = true;
+            summaryErr.textContent = '';
+            const previousLabel = summarizeBtn.dataset.label || 'Summarize';
+            summarizeBtn.dataset.label = previousLabel;
+            summarizeBtn.disabled = true;
+            summarizeBtn.textContent = 'Summarizing…';
+            try {
+              const result = await window.agentos.inbox.summarize(item.id);
+              if (result.ok) {
+                summaryBox.innerHTML = '';
+                const text = document.createElement('div');
+                text.className = 'summary-text';
+                text.textContent = result.value.summary;
+                summaryBox.appendChild(text);
+
+                const metaLine = document.createElement('div');
+                metaLine.className = 'summary-meta';
+                const parts = [];
+                parts.push(result.value.model || 'unknown');
+                if (typeof result.value.promptTokens === 'number'
+                    && typeof result.value.completionTokens === 'number') {
+                  parts.push('prompt ' + result.value.promptTokens
+                    + ' + completion ' + result.value.completionTokens + ' tokens');
+                }
+                if (typeof result.value.durationMs === 'number') {
+                  parts.push(result.value.durationMs + 'ms');
+                }
+                metaLine.textContent = parts.join(' · ');
+                summaryBox.appendChild(metaLine);
+
+                summaryBox.hidden = false;
+                // After a successful run the button stays as "Re-summarize"
+                // so users discover that the call is non-idempotent.
+                summarizeBtn.textContent = 'Re-summarize';
+              } else {
+                summaryErr.textContent = formatProblem(result.problem, result.status);
+                summaryErr.hidden = false;
+                summarizeBtn.textContent = previousLabel;
+              }
+            } catch (err) {
+              summaryErr.textContent = (err && err.message) ? err.message : String(err);
+              summaryErr.hidden = false;
+              summarizeBtn.textContent = previousLabel;
+            } finally {
+              summarizeBtn.disabled = false;
+            }
+          });
+
+          tagBtn.addEventListener('click', async () => {
+            tagsErr.hidden = true;
+            tagsErr.textContent = '';
+            const previousLabel = tagBtn.dataset.label || 'Tags';
+            tagBtn.dataset.label = previousLabel;
+            tagBtn.disabled = true;
+            tagBtn.textContent = 'Tagging…';
+            try {
+              const result = await window.agentos.inbox.suggestTags(item.id);
+              if (result.ok) {
+                tagsBox.innerHTML = '';
+                const row = document.createElement('div');
+                row.className = 'tag-pill-row';
+                for (const tag of result.value.tags || []) {
+                  const pill = document.createElement('span');
+                  pill.className = 'tag-pill';
+                  pill.textContent = tag;
+                  row.appendChild(pill);
+                }
+                tagsBox.appendChild(row);
+
+                const metaLine = document.createElement('div');
+                metaLine.className = 'tags-meta';
+                const parts = [];
+                parts.push(result.value.model || 'unknown');
+                if (typeof result.value.promptTokens === 'number'
+                    && typeof result.value.completionTokens === 'number') {
+                  parts.push('prompt ' + result.value.promptTokens
+                    + ' + completion ' + result.value.completionTokens + ' tokens');
+                }
+                if (typeof result.value.durationMs === 'number') {
+                  parts.push(result.value.durationMs + 'ms');
+                }
+                metaLine.textContent = parts.join(' · ');
+                tagsBox.appendChild(metaLine);
+
+                tagsBox.hidden = false;
+                // Same non-idempotency relabel pattern as Summarize.
+                tagBtn.textContent = 'Re-tag';
+              } else {
+                tagsErr.textContent = formatProblem(result.problem, result.status);
+                tagsErr.hidden = false;
+                tagBtn.textContent = previousLabel;
+              }
+            } catch (err) {
+              tagsErr.textContent = (err && err.message) ? err.message : String(err);
+              tagsErr.hidden = false;
+              tagBtn.textContent = previousLabel;
+            } finally {
+              tagBtn.disabled = false;
+            }
+          });
+
+          els.list.appendChild(li);
+        }
+        const showing = page.items.length;
+        const total = typeof page.total === 'number' ? page.total : showing;
+        els.listCount.textContent = 'showing ' + showing + ' of ' + total;
+      };
+
+      const refreshStatus = async () => {
+        try {
+          const status = await window.agentos.runtime.getStatus();
+          const ready = status && status.database && status.database.ready === true;
+          const ver = status && status.database ? status.database.schemaVersion : '?';
+          setStatus('schema=' + ver + ' · api=' + (ready ? 'ok' : 'down'), ready ? 'ok' : 'err');
+        } catch (err) {
+          setStatus('api=disconnected', 'err');
+        }
+      };
+
+      const refreshList = async () => {
+        hideError(els.listErr);
+        try {
+          const result = await window.agentos.inbox.list({ limit: LIST_LIMIT, offset: 0 });
+          if (result.ok) {
+            renderList(result.value);
+          } else {
+            showError(els.listErr, formatProblem(result.problem, result.status));
+          }
+        } catch (err) {
+          showError(els.listErr, (err && err.message) ? err.message : String(err));
+        }
+      };
+
+      const capture = async () => {
+        hideError(els.captureErr);
+        const content = els.content.value;
+        const source = els.source.value.trim();
+        if (!content.trim()) {
+          showError(els.captureErr, 'content: required');
+          return;
+        }
+        els.capture.disabled = true;
+        try {
+          const req = source ? { content, source } : { content };
+          const result = await window.agentos.inbox.capture(req);
+          if (result.ok) {
+            els.content.value = '';
+            // keep source field as-is, users often capture in batches
+            await refreshList();
+          } else {
+            showError(els.captureErr, formatProblem(result.problem, result.status));
+          }
+        } catch (err) {
+          showError(els.captureErr, (err && err.message) ? err.message : String(err));
+        } finally {
+          els.capture.disabled = false;
+        }
+      };
+
+      els.capture.addEventListener('click', capture);
+      els.refresh.addEventListener('click', refreshList);
+      els.content.addEventListener('keydown', (ev) => {
+        // cmd/ctrl+enter submits
+        if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') {
+          ev.preventDefault();
+          capture();
+        }
+      });
+
+      if (bridgeMissing) {
+        setStatus('preload bridge missing', 'err');
+        showError(els.listErr, 'preload bridge missing — run `pnpm run dev` (which builds preload first)');
+      } else {
+        refreshStatus();
+        refreshList();
+      }
+    </script>
+  </body>
+</html>
+

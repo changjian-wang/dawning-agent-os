@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>Dawning.AgentOS.Architecture.Tests</RootNamespace>
@@ -32,6 +31,7 @@
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Core\Dawning.AgentOS.Domain.Core.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
+        <ProjectReference Include="..\..\src\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+        <ProjectReference Include="..\..\src\Dawning.AgentOS.Api\Dawning.AgentOS.Api.csproj" />
     </ItemGroup>
-
 </Project>

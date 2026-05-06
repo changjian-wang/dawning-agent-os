@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Infrastructure</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Infrastructure</AssemblyName>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!--
+      Infrastructure adapter project (per ADR-017 + ADR-023 + ADR-024).
+
+      V0 scope:
+        Time/         IClock + IRuntimeStartTimeProvider implementations.
+        Hosting/      IAppDataPathProvider for per-platform SQLite path.
+        Persistence/  IDbConnectionFactory (Microsoft.Data.Sqlite)
+                      + ISchemaInitializer + IHostedService bootstrap
+                      + Migrations/*.sql embedded as resources.
+        Options/      SqliteOptions (test-only DatabasePath override).
+
+      IDomainEventDispatcher remains an open ADR-022 §10 todo and is not
+      implemented here yet; nothing in Application currently injects it.
+
+      Dapper itself is intentionally deferred until the first Aggregate
+      Repository lands (see ADR-024 §F1 / §G1); S5 uses raw DbCommand
+      ExecuteScalarAsync for the smoke read in RuntimeAppService.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Data.Sqlite" />
+        <PackageReference Include="Dapper" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+        <PackageReference Include="Microsoft.Extensions.Options" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+    </ItemGroup>
+
+    <!-- ADR-024 §3: schema bootstrap files are embedded resources so the
+         initializer can stream them out of the assembly without relying
+         on filesystem layout at deployment time. -->
+    <ItemGroup>
+        <EmbeddedResource Include="Persistence\Migrations\*.sql" />
+    </ItemGroup>
+
+    <!-- ADR-028 §决策 J1: provider implementations are intentionally
+         internal sealed; the test assembly needs InternalsVisibleTo to
+         construct them through the same DI shape (IHttpClientFactory +
+         IOptionsMonitor) that AddInfrastructure() uses in production. -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="Dawning.AgentOS.Infrastructure.Tests" />
+    </ItemGroup>
+</Project>

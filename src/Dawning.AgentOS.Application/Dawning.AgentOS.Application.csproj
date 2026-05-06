@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Application</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Application</AssemblyName>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!--
+      Application orchestrates use cases on top of Domain / Domain.Services.
+      Internal directory layout is fixed by ADR-022 (supersedes ADR-021):
+        Abstractions/         ports implemented in Infra.* projects
+                              (IClock, IRuntimeStartTimeProvider,
+                               IDomainEventDispatcher)
+        Interfaces/           AppService facade contracts called by API layer
+        Services/             AppService implementations of Interfaces/
+        <Feature>/            DTOs only (e.g. Runtime/RuntimeStatus.cs)
+        DomainEventHandlers/  cross-aggregate orchestrators reacting to
+                              IDomainEvent (V0 empty, hook only)
+        DependencyInjection/  AddApplication(IServiceCollection) extension
+                              (ADR-023 §5; AppService auto-registration)
+      No Common/, Shared/, Helpers/ or Messaging/ folders are permitted.
+
+      Application depends on Domain (and transitively Domain.Core) and on
+      Domain.Services for cross-aggregate domain logic. Per ADR-022, MediatR
+      and MediatR.Contracts are removed from the entire solution; the
+      Application layer no longer references either. It must not reference
+      any Infra.* / Services.Api project; that direction is pinned by
+      LayeringTests.
+
+      Per ADR-023 §5 Application gains a single narrow dependency on the
+      abstractions-only package Microsoft.Extensions.DependencyInjection
+      .Abstractions so that AddApplication(IServiceCollection) can live
+      here. The concrete DI container, web stack, persistence drivers
+      and logging implementations remain forbidden by LayeringTests.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
+        <ProjectReference Include="..\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
+    </ItemGroup>
+</Project>
