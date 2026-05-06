@@ -71,7 +71,8 @@ public sealed class MemoryEndpointsTests
             Assert.That(dto.Status, Is.EqualTo("Active"));
             Assert.That(
                 dto.CreatedAt,
-                Is.EqualTo(DawningAgentOsApiFactory.NowUtc),
+                Is.EqualTo(DawningAgentOsApiFactory.NowUtc)
+                    .Within(DawningAgentOsApiFactory.MaxClockDrift),
                 "AppService stamps createdAt from the injected clock"
             );
             Assert.That(dto.DeletedAt, Is.Null);

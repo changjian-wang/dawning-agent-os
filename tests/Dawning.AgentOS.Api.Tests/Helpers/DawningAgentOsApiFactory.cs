@@ -17,13 +17,43 @@ namespace Dawning.AgentOS.Api.Tests.Helpers;
 /// shared per-instance in-memory SQLite database so the schema bootstrap
 /// runs against a fresh, hermetic store on each fixture.
 /// </summary>
+/// <remarks>
+/// The injected <see cref="IClock"/> is monotonic, not strictly fixed:
+/// <see cref="NowUtc"/> is the floor instant on the first read, and each
+/// subsequent <see cref="IClock.UtcNow"/> advances by 1 millisecond. A
+/// strictly fixed clock collapses every UUIDv7 generated within the
+/// test into the same millisecond bucket, which then forces sort
+/// order to fall back to the random tail — the chat £ssertion
+/// <c>messages[0].Role == "user"</c> would flake ≈37% of the time
+/// because <c>created_at_utc ASC, id ASC</c> could not break the
+/// tie deterministically. Advancing by 1ms per call removes that
+/// degeneracy without polluting tests with real wall time.
+/// Assertions that compared a persisted timestamp to <see cref="NowUtc"/>
+/// must therefore allow a small forward drift (≤1 second is plenty for
+/// any single fixture).
+/// </remarks>
 internal sealed class DawningAgentOsApiFactory : WebApplicationFactory<Program>
 {
     /// <summary>The fixed UTC instant the fake start-time provider returns.</summary>
     public static DateTimeOffset StartedAtUtc { get; } = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-    /// <summary>The fixed UTC instant the fake clock returns.</summary>
+    /// <summary>
+    /// The base UTC instant the fake clock returns on its first read.
+    /// Subsequent reads advance by 1 millisecond each so UUIDv7
+    /// identifiers generated within a single fixture remain strictly
+    /// monotonic; tests that compare a persisted timestamp to this
+    /// constant should allow up to <see cref="MaxClockDrift"/> forward
+    /// drift.
+    /// </summary>
     public static DateTimeOffset NowUtc { get; } = StartedAtUtc.AddMinutes(5);
+
+    /// <summary>
+    /// Generous upper bound on how far the monotonic test clock can
+    /// drift past <see cref="NowUtc"/> within a single fixture; tests
+    /// that previously asserted exact equality should switch to
+    /// <c>.Within(MaxClockDrift)</c> tolerance.
+    /// </summary>
+    public static TimeSpan MaxClockDrift { get; } = TimeSpan.FromSeconds(1);
 
     /// <summary>The startup token the factory configures the host to expect.</summary>
     public const string ExpectedToken = "test-token";
@@ -74,7 +104,7 @@ internal sealed class DawningAgentOsApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<IClock>();
             services.RemoveAll<IRuntimeStartTimeProvider>();
 
-            services.AddSingleton<IClock>(new FixedClock(NowUtc));
+            services.AddSingleton<IClock>(new MonotonicTestClock(NowUtc));
             services.AddSingleton<IRuntimeStartTimeProvider>(
                 new FixedRuntimeStartTimeProvider(StartedAtUtc)
             );
@@ -93,9 +123,24 @@ internal sealed class DawningAgentOsApiFactory : WebApplicationFactory<Program>
         base.Dispose(disposing);
     }
 
-    private sealed class FixedClock(DateTimeOffset value) : IClock
+    /// <summary>
+    /// <see cref="IClock"/> stub that returns <paramref name="baseInstant"/>
+    /// on the first read and advances by 1 millisecond for every
+    /// subsequent read. The advance is the smallest amount that still
+    /// gives <see cref="Guid.CreateVersion7(DateTimeOffset)"/> a fresh
+    /// millisecond bucket per call, which is what UUIDv7 needs to keep
+    /// sort-order monotonicity. Drift is bounded by
+    /// <see cref="DawningAgentOsApiFactory.MaxClockDrift"/> for any
+    /// realistic fixture, so equality assertions should switch to
+    /// <c>.Within(MaxClockDrift)</c>.
+    /// </summary>
+    private sealed class MonotonicTestClock(DateTimeOffset baseInstant) : IClock
     {
-        public DateTimeOffset UtcNow { get; } = value;
+        private readonly DateTimeOffset _baseInstant = baseInstant;
+        private long _calls = -1;
+
+        public DateTimeOffset UtcNow =>
+            _baseInstant.AddMilliseconds(Interlocked.Increment(ref _calls));
     }
 
     private sealed class FixedRuntimeStartTimeProvider(DateTimeOffset value)

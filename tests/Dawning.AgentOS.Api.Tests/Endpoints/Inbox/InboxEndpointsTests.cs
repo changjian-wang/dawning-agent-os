@@ -60,7 +60,8 @@ public sealed class InboxEndpointsTests
             );
             Assert.That(
                 snapshot.CapturedAtUtc,
-                Is.EqualTo(DawningAgentOsApiFactory.NowUtc),
+                Is.EqualTo(DawningAgentOsApiFactory.NowUtc)
+                    .Within(DawningAgentOsApiFactory.MaxClockDrift),
                 "AppService stamps capturedAtUtc from the injected clock"
             );
         });

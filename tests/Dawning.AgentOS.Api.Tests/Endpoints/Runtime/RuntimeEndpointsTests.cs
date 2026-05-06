@@ -45,11 +45,16 @@ public sealed class RuntimeEndpointsTests
         Assert.Multiple(() =>
         {
             Assert.That(payload!.StartedAtUtc, Is.EqualTo(DawningAgentOsApiFactory.StartedAtUtc));
-            Assert.That(payload.NowUtc, Is.EqualTo(DawningAgentOsApiFactory.NowUtc));
+            Assert.That(
+                payload.NowUtc,
+                Is.EqualTo(DawningAgentOsApiFactory.NowUtc)
+                    .Within(DawningAgentOsApiFactory.MaxClockDrift)
+            );
             Assert.That(payload.Healthy, Is.True);
             Assert.That(
                 payload.Uptime,
                 Is.EqualTo(DawningAgentOsApiFactory.NowUtc - DawningAgentOsApiFactory.StartedAtUtc)
+                    .Within(DawningAgentOsApiFactory.MaxClockDrift)
             );
             Assert.That(payload.Database, Is.Not.Null, "database snapshot must be present");
             Assert.That(payload.Database!.Ready, Is.True, "schema bootstrap must have succeeded");

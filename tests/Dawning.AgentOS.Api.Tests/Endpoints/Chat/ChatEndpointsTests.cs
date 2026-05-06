@@ -90,7 +90,8 @@ public sealed class ChatEndpointsTests
             );
             Assert.That(
                 payload.Session.CreatedAt,
-                Is.EqualTo(DawningAgentOsApiFactory.NowUtc),
+                Is.EqualTo(DawningAgentOsApiFactory.NowUtc)
+                    .Within(DawningAgentOsApiFactory.MaxClockDrift),
                 "AppService stamps timestamps from the injected clock"
             );
         });
