@@ -378,6 +378,120 @@ async function probeMemoryLifecycle(
   );
 }
 
+/**
+ * Per ADR-034 §M3 the inbox→memory promotion smoke probe
+ * exercises POST /api/inbox → POST /api/inbox/items/{id}/promote-to-memory
+ * → GET /api/memory?status=Active, asserting:
+ * <list type="bullet">
+ *   <item><description>UUIDv7 id on the new ledger row.</description></item>
+ *   <item><description>Source pinned to <c>InboxAction</c> per §决策 A1.</description></item>
+ *   <item><description>Scope pinned to literal <c>"inbox"</c> per §决策 C1.</description></item>
+ *   <item><description><c>isExplicit=true</c>, <c>confidence=1.0</c>, <c>sensitivity="Normal"</c>.</description></item>
+ *   <item><description>Content matches the source inbox item verbatim per §决策 B1.</description></item>
+ *   <item><description>Re-clicking yields a second distinct ledger row per §决策 F1 (no dedup).</description></item>
+ *   <item><description>Both rows visible via GET /api/memory.</description></item>
+ * </list>
+ */
+async function probeInboxToMemoryPromotion(
+  baseUrl: string,
+  token: string,
+): Promise<void> {
+  const root = baseUrl.replace(/\/+$/u, "");
+  const captureContent = `smoke promote @ ${new Date().toISOString()}`;
+  const captured = await captureInboxItem(baseUrl, token, captureContent);
+
+  const promote = async (): Promise<MemoryEntry> => {
+    const response = await fetch(
+      `${root}/api/inbox/items/${encodeURIComponent(captured.id)}/promote-to-memory`,
+      { method: "POST", headers: { [HEADER_NAME]: token } },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `POST /api/inbox/items/{id}/promote-to-memory returned ${response.status} ${response.statusText}`,
+      );
+    }
+    return (await response.json()) as MemoryEntry;
+  };
+
+  const first = await promote();
+  if (!UUIDV7_PATTERN.test(first.id)) {
+    throw new Error(
+      `promote-to-memory returned non-UUIDv7 id: '${first.id}'`,
+    );
+  }
+  if (first.source !== "InboxAction") {
+    throw new Error(
+      `promote-to-memory returned source='${first.source}', expected 'InboxAction' per ADR-034 §决策 A1`,
+    );
+  }
+  if (first.scope !== "inbox") {
+    throw new Error(
+      `promote-to-memory returned scope='${first.scope}', expected 'inbox' per ADR-034 §决策 C1`,
+    );
+  }
+  if (first.isExplicit !== true) {
+    throw new Error(
+      `promote-to-memory returned isExplicit=${first.isExplicit}, expected true`,
+    );
+  }
+  if (first.confidence !== 1.0) {
+    throw new Error(
+      `promote-to-memory returned confidence=${first.confidence}, expected 1.0`,
+    );
+  }
+  if (first.sensitivity !== "Normal") {
+    throw new Error(
+      `promote-to-memory returned sensitivity='${first.sensitivity}', expected 'Normal'`,
+    );
+  }
+  if (first.status !== "Active") {
+    throw new Error(
+      `promote-to-memory returned status='${first.status}', expected 'Active'`,
+    );
+  }
+  if (first.content !== captureContent) {
+    throw new Error(
+      `promote-to-memory echoed wrong content: expected '${captureContent}', got '${first.content}'`,
+    );
+  }
+
+  // Per §决策 F1 V0 does not dedup. Calling promote again must yield a
+  // distinct ledger row with the same content.
+  const second = await promote();
+  if (second.id === first.id) {
+    throw new Error(
+      `promote-to-memory dedup violation: second call returned id='${second.id}' identical to first — ADR-034 §决策 F1 requires no dedup`,
+    );
+  }
+  if (second.content !== captureContent) {
+    throw new Error(
+      `promote-to-memory second call echoed wrong content: expected '${captureContent}', got '${second.content}'`,
+    );
+  }
+
+  // Both rows must be visible via GET /api/memory.
+  const listResponse = await fetch(
+    `${root}/api/memory?limit=50&offset=0&status=Active`,
+    { headers: { [HEADER_NAME]: token } },
+  );
+  if (!listResponse.ok) {
+    throw new Error(
+      `GET /api/memory returned ${listResponse.status} ${listResponse.statusText}`,
+    );
+  }
+  const page = (await listResponse.json()) as MemoryListPage;
+  const ids = new Set(page.items.map((entry) => entry.id));
+  if (!ids.has(first.id) || !ids.has(second.id)) {
+    throw new Error(
+      `GET /api/memory missing promoted ids (first='${first.id}' present=${ids.has(first.id)}, second='${second.id}' present=${ids.has(second.id)})`,
+    );
+  }
+
+  console.log(
+    `[smoke] inbox→memory promotion ok (inboxId=${captured.id}, ledger1=${first.id}, ledger2=${second.id}, no_dedup=true)`,
+  );
+}
+
 async function main(): Promise<void> {
   const token = randomUUID();
   // Smoke runs do not stream stdout to console by default — the
@@ -429,6 +543,8 @@ async function main(): Promise<void> {
     await probeChatSessionLifecycle(baseUrl, token);
 
     await probeMemoryLifecycle(baseUrl, token);
+
+    await probeInboxToMemoryPromotion(baseUrl, token);
 
     console.log("[smoke] PASS");
   } catch (err) {

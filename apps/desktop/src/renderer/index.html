@@ -251,6 +251,33 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         white-space: pre-wrap;
       }
+      /* ADR-034 §决策 H1: the Save action is a deterministic user write
+         (no LLM in the path), so it uses a blue palette distinct from
+         the green LLM-output boxes (.summary / .tags). */
+      li .save {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #0f1a2a;
+        border: 1px solid #1f2f4a;
+        border-radius: 4px;
+      }
+      li .save-text {
+        font-size: 12px;
+        color: #c8d8f0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        word-break: break-word;
+      }
+      li .save-error {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
       .empty {
         opacity: 0.5;
         font-style: italic;
@@ -896,6 +923,16 @@
           tagBtn.type = 'button';
           tagBtn.textContent = 'Tags';
           actions.appendChild(tagBtn);
+          // ADR-034 §决策 H1: third "📒 Save" button. POSTs to
+          // /api/inbox/items/{id}/promote-to-memory and persists the
+          // inbox content into the Memory Ledger as Source=InboxAction.
+          // V0 does not dedup (§决策 F1) — repeated clicks intentionally
+          // produce multiple ledger rows; the relabel to
+          // "Saved ✓ — save again" makes the non-idempotency discoverable.
+          const saveBtn = document.createElement('button');
+          saveBtn.type = 'button';
+          saveBtn.textContent = '📒 Save';
+          actions.appendChild(saveBtn);
           li.appendChild(actions);
 
           const summaryBox = document.createElement('div');
@@ -917,6 +954,16 @@
           tagsErr.className = 'tags-error';
           tagsErr.hidden = true;
           li.appendChild(tagsErr);
+
+          const saveBox = document.createElement('div');
+          saveBox.className = 'save';
+          saveBox.hidden = true;
+          li.appendChild(saveBox);
+
+          const saveErr = document.createElement('div');
+          saveErr.className = 'save-error';
+          saveErr.hidden = true;
+          li.appendChild(saveErr);
 
           summarizeBtn.addEventListener('click', async () => {
             summaryErr.hidden = true;
@@ -1017,6 +1064,42 @@
               tagBtn.textContent = previousLabel;
             } finally {
               tagBtn.disabled = false;
+            }
+          });
+
+          saveBtn.addEventListener('click', async () => {
+            saveErr.hidden = true;
+            saveErr.textContent = '';
+            const previousLabel = saveBtn.dataset.label || '📒 Save';
+            saveBtn.dataset.label = previousLabel;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving…';
+            try {
+              const result = await window.agentos.inbox.promoteToMemory(item.id);
+              if (result.ok) {
+                saveBox.innerHTML = '';
+                const text = document.createElement('div');
+                text.className = 'save-text';
+                const memId = (result.value.id || '').substring(0, 8);
+                text.textContent = '✓ saved as memory ' + memId
+                  + ' (source=' + result.value.source
+                  + ', scope=' + result.value.scope + ')';
+                saveBox.appendChild(text);
+                saveBox.hidden = false;
+                // ADR-034 §决策 F1: V0 does not dedup. Relabel so users
+                // discover that clicking again creates another row.
+                saveBtn.textContent = '📒 Saved ✓ — save again';
+              } else {
+                saveErr.textContent = formatProblem(result.problem, result.status);
+                saveErr.hidden = false;
+                saveBtn.textContent = previousLabel;
+              }
+            } catch (err) {
+              saveErr.textContent = (err && err.message) ? err.message : String(err);
+              saveErr.hidden = false;
+              saveBtn.textContent = previousLabel;
+            } finally {
+              saveBtn.disabled = false;
             }
           });
 

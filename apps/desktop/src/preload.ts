@@ -223,6 +223,20 @@ const api = {
         itemId,
       )) as InboxIpcResult<InboxItemTags>;
     },
+    /**
+     * POST /api/inbox/items/{id}/promote-to-memory via main; per
+     * ADR-034 each call persists the inbox content as a Memory Ledger
+     * row with source = "InboxAction", scope = "inbox", isExplicit =
+     * true, confidence = 1.0, sensitivity = "Normal". V0 does not
+     * dedup (§决策 F1) — calling twice yields two distinct ledger
+     * rows by design.
+     */
+    promoteToMemory: async (itemId: string): Promise<InboxIpcResult<MemoryEntry>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:inbox:promote-to-memory",
+        itemId,
+      )) as InboxIpcResult<MemoryEntry>;
+    },
   },
   chat: {
     /** GET /api/chat/sessions via main; ordered by updated_at DESC. */

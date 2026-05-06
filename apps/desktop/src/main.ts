@@ -228,6 +228,32 @@ ipcMain.handle(
   },
 );
 
+// Per ADR-034 §决策 H1 the third inbox-action button POSTs to
+// /api/inbox/items/{id:guid}/promote-to-memory and persists the inbox
+// content as a Memory Ledger row with source = InboxAction. Per
+// §决策 F1 V0 does not dedup, so calling this twice yields two
+// distinct ledger rows by design — main does no client-side
+// short-circuit either.
+ipcMain.handle(
+  "agentos:inbox:promote-to-memory",
+  async (_event, itemId: unknown) => {
+    if (!runtime) {
+      throw new Error("runtime not initialized");
+    }
+    if (typeof itemId !== "string" || itemId.length === 0) {
+      throw new Error("itemId must be a non-empty string");
+    }
+    const response = await fetch(
+      `${runtime.baseUrl}/api/inbox/items/${encodeURIComponent(itemId)}/promote-to-memory`,
+      {
+        method: "POST",
+        headers: { [HEADER_NAME]: runtime.token },
+      },
+    );
+    return readBodyAsResult(response);
+  },
+);
+
 // =====================================================================
 // Chat V0 IPC handlers — per ADR-032 §决策 G1 / H1.
 //
