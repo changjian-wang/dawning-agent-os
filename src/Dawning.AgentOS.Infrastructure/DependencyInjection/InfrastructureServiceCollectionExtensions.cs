@@ -5,6 +5,7 @@ using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Domain.Inbox;
+using Dawning.AgentOS.Domain.Memory;
 using Dawning.AgentOS.Infrastructure.Hosting;
 using Dawning.AgentOS.Infrastructure.Llm.AzureOpenAi;
 using Dawning.AgentOS.Infrastructure.Llm.DeepSeek;
@@ -13,6 +14,7 @@ using Dawning.AgentOS.Infrastructure.Options;
 using Dawning.AgentOS.Infrastructure.Persistence;
 using Dawning.AgentOS.Infrastructure.Persistence.Chat;
 using Dawning.AgentOS.Infrastructure.Persistence.Inbox;
+using Dawning.AgentOS.Infrastructure.Persistence.Memory;
 using Dawning.AgentOS.Infrastructure.Time;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,6 +74,9 @@ public static class InfrastructureServiceCollectionExtensions
         // ADR-032 §决策 D2: chat session repository is scoped, mirrors
         // the inbox repository's lifetime — connection-per-call.
         services.AddScoped<IChatSessionRepository, ChatSessionRepository>();
+        // ADR-033 §决策 I1: memory ledger repository is scoped,
+        // mirroring the inbox / chat lifetime.
+        services.AddScoped<IMemoryLedgerRepository, MemoryLedgerRepository>();
 
         // LLM provider (ADR-028).
         services.AddLlm(configuration);
