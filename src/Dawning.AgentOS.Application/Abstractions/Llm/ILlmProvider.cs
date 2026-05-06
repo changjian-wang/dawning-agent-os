@@ -50,4 +50,34 @@ public interface ILlmProvider
         LlmRequest request,
         CancellationToken cancellationToken
     );
+
+    /// <summary>
+    /// Sends a streaming chat-completion request and yields each
+    /// upstream event as an <see cref="LlmStreamChunk"/>. Per ADR-032
+    /// §决策 F1 the contract is:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <description>
+    ///       Zero or more <see cref="LlmStreamChunkKind.Delta"/> chunks
+    ///       arrive in arrival order.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <description>
+    ///       The stream is terminated by exactly one
+    ///       <see cref="LlmStreamChunkKind.Done"/> chunk on success, or
+    ///       exactly one <see cref="LlmStreamChunkKind.Error"/> chunk on
+    ///       failure. Implementations must not yield further chunks
+    ///       after the terminal one.
+    ///     </description>
+    ///   </item>
+    /// </list>
+    /// </summary>
+    /// <param name="request">Same shape as for <see cref="CompleteAsync"/>; <see cref="LlmRequest.Messages"/> must be non-empty.</param>
+    /// <param name="cancellationToken">Cooperative cancellation token; cancellation surfaces as <see cref="OperationCanceledException"/> propagated to the caller (the only allowed-to-throw exception per ADR-028 §决策 G1).</param>
+    /// <returns>An asynchronous sequence of stream events.</returns>
+    IAsyncEnumerable<LlmStreamChunk> CompleteStreamAsync(
+        LlmRequest request,
+        CancellationToken cancellationToken
+    );
 }

@@ -1,8 +1,9 @@
 using Dawning.AgentOS.Application.Abstractions;
 using Dawning.AgentOS.Application.Abstractions.Hosting;
 using Dawning.AgentOS.Application.Abstractions.Llm;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Domain.Inbox;
 using Dawning.AgentOS.Infrastructure.Hosting;
 using Dawning.AgentOS.Infrastructure.Llm.AzureOpenAi;
@@ -10,6 +11,7 @@ using Dawning.AgentOS.Infrastructure.Llm.DeepSeek;
 using Dawning.AgentOS.Infrastructure.Llm.OpenAi;
 using Dawning.AgentOS.Infrastructure.Options;
 using Dawning.AgentOS.Infrastructure.Persistence;
+using Dawning.AgentOS.Infrastructure.Persistence.Chat;
 using Dawning.AgentOS.Infrastructure.Persistence.Inbox;
 using Dawning.AgentOS.Infrastructure.Time;
 using Microsoft.Extensions.Configuration;
@@ -67,6 +69,9 @@ public static class InfrastructureServiceCollectionExtensions
         // alongside the connection factory; per-call connection lifetime
         // (ADR-024 §E1) keeps the repository safely re-entrant.
         services.AddScoped<IInboxRepository, InboxRepository>();
+        // ADR-032 §决策 D2: chat session repository is scoped, mirrors
+        // the inbox repository's lifetime — connection-per-call.
+        services.AddScoped<IChatSessionRepository, ChatSessionRepository>();
 
         // LLM provider (ADR-028).
         services.AddLlm(configuration);
@@ -150,7 +155,13 @@ public static class InfrastructureServiceCollectionExtensions
             // the rest of the surface remains usable; we surface a
             // single warning here so operators see the cause without
             // reading the source.
-            if (string.Equals(opts.ActiveProvider, LlmOptions.AzureOpenAiProviderName, StringComparison.Ordinal))
+            if (
+                string.Equals(
+                    opts.ActiveProvider,
+                    LlmOptions.AzureOpenAiProviderName,
+                    StringComparison.Ordinal
+                )
+            )
             {
                 var azureOpts = opts.Providers.AzureOpenAI;
                 if (
@@ -161,9 +172,9 @@ public static class InfrastructureServiceCollectionExtensions
                 {
                     logger.LogWarning(
                         "LLM configuration for active provider 'AzureOpenAI' is incomplete. "
-                        + "Set via environment variables (LLM_PROVIDERS_AZUREOPENAI_APIKEY, "
-                        + "LLM_PROVIDERS_AZUREOPENAI_ENDPOINT, LLM_PROVIDERS_AZUREOPENAI_DEPLOYMENTID) "
-                        + "or dotnet user-secrets. Until configured, LLM calls will fail."
+                            + "Set via environment variables (LLM_PROVIDERS_AZUREOPENAI_APIKEY, "
+                            + "LLM_PROVIDERS_AZUREOPENAI_ENDPOINT, LLM_PROVIDERS_AZUREOPENAI_DEPLOYMENTID) "
+                            + "or dotnet user-secrets. Until configured, LLM calls will fail."
                     );
                 }
             }
@@ -181,8 +192,8 @@ public static class InfrastructureServiceCollectionExtensions
                 {
                     logger.LogWarning(
                         "LLM ApiKey for active provider '{Provider}' is empty. Set via environment variable "
-                        + "(e.g., LLM_PROVIDERS_OPENAI_APIKEY for OpenAI) or dotnet user-secrets. "
-                        + "Until configured, LLM calls will return llm.authenticationFailed.",
+                            + "(e.g., LLM_PROVIDERS_OPENAI_APIKEY for OpenAI) or dotnet user-secrets. "
+                            + "Until configured, LLM calls will return llm.authenticationFailed.",
                         opts.ActiveProvider
                     );
                 }
@@ -242,4 +253,3 @@ public static class InfrastructureServiceCollectionExtensions
         );
     }
 }
-

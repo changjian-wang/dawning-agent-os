@@ -59,4 +59,24 @@ internal sealed class OpenAiLlmProvider : ILlmProvider
             cancellationToken
         );
     }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<LlmStreamChunk> CompleteStreamAsync(
+        LlmRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var providerOptions = _options.CurrentValue.Providers.OpenAI;
+        var httpClient = _httpClientFactory.CreateClient(HttpClientName);
+
+        return OpenAiCompatibleClient.CompleteStreamAsync(
+            httpClient,
+            providerOptions.ApiKey,
+            providerOptions.Model,
+            request,
+            cancellationToken
+        );
+    }
 }

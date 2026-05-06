@@ -538,6 +538,31 @@ public sealed class LayeringTests
         });
     }
 
+    [Test]
+    public void IChatSessionRepository_LivesInDomainChatNamespace()
+    {
+        // Per ADR-032 §决策 D2 / L1 the chat-side repository port
+        // mirrors IInboxRepository's placement: Domain layer, scoped
+        // namespace, talks only in domain types. Surfacing this as its
+        // own test makes a future move to Application.Abstractions a
+        // forced ADR conversation.
+        var chatRepositoryType = typeof(global::Dawning.AgentOS.Domain.Chat.IChatSessionRepository);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                chatRepositoryType.Namespace,
+                Is.EqualTo("Dawning.AgentOS.Domain.Chat"),
+                "IChatSessionRepository must live under Domain/Chat per ADR-032 §决策 D2."
+            );
+            Assert.That(
+                chatRepositoryType.Assembly,
+                Is.EqualTo(Domain),
+                "IChatSessionRepository must ship in the Dawning.AgentOS.Domain assembly."
+            );
+        });
+    }
+
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>
         assembly
             .GetReferencedAssemblies()

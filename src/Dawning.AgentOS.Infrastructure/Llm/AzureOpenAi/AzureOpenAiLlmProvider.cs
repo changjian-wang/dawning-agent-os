@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Dawning.AgentOS.Application.Abstractions.Llm;
 using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Core;
+using Dawning.AgentOS.Infrastructure.Llm.Common;
 using Dawning.AgentOS.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
@@ -72,7 +73,10 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
             );
         }
 
-        if (string.IsNullOrEmpty(azureOptions.Endpoint) || string.IsNullOrEmpty(azureOptions.DeploymentId))
+        if (
+            string.IsNullOrEmpty(azureOptions.Endpoint)
+            || string.IsNullOrEmpty(azureOptions.DeploymentId)
+        )
         {
             return Result<LlmCompletion>.Failure(
                 LlmErrors.InvalidRequest(
@@ -118,7 +122,11 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
         try
         {
             response = await httpClient
-                .SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken)
+                .SendAsync(
+                    requestMessage,
+                    HttpCompletionOption.ResponseContentRead,
+                    cancellationToken
+                )
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -157,9 +165,7 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
             catch (JsonException ex)
             {
                 return Result<LlmCompletion>.Failure(
-                    LlmErrors.UpstreamUnavailable(
-                        $"Upstream returned malformed JSON: {ex.Message}"
-                    )
+                    LlmErrors.UpstreamUnavailable($"Upstream returned malformed JSON: {ex.Message}")
                 );
             }
 
@@ -194,6 +200,100 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
         finally
         {
             response.Dispose();
+        }
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<LlmStreamChunk> CompleteStreamAsync(
+        LlmRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // ADR-032 §决策 F1 — the Azure OpenAI streaming endpoint accepts
+        // the same SSE wire shape as OpenAI; the differences are URL
+        // ({deployment-id} + ?api-version=) and auth (api-key header).
+        // The shared SSE reader in OpenAiCompatibleClient handles the
+        // response; we only build the request envelope.
+        return CompleteStreamAsyncImpl(request, cancellationToken);
+    }
+
+    private async IAsyncEnumerable<LlmStreamChunk> CompleteStreamAsyncImpl(
+        LlmRequest request,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        if (request.Messages.Count == 0)
+        {
+            yield return LlmStreamChunk.ForError(
+                LlmErrors.InvalidRequest("LlmRequest.Messages must contain at least one entry.")
+            );
+            yield break;
+        }
+
+        var azureOptions = _options.CurrentValue.Providers.AzureOpenAI;
+
+        if (string.IsNullOrEmpty(azureOptions.ApiKey))
+        {
+            yield return LlmStreamChunk.ForError(
+                LlmErrors.AuthenticationFailed(
+                    "API key is not configured for the active LLM provider."
+                )
+            );
+            yield break;
+        }
+
+        if (
+            string.IsNullOrEmpty(azureOptions.Endpoint)
+            || string.IsNullOrEmpty(azureOptions.DeploymentId)
+        )
+        {
+            yield return LlmStreamChunk.ForError(
+                LlmErrors.InvalidRequest(
+                    "Azure OpenAI endpoint and deployment ID must be configured."
+                )
+            );
+            yield break;
+        }
+
+        var httpClient = _httpClientFactory.CreateClient(HttpClientName);
+        var deploymentId = azureOptions.DeploymentId;
+        var apiVersion = string.IsNullOrEmpty(azureOptions.ApiVersion)
+            ? LlmAzureOpenAiProviderOptions.DefaultApiVersion
+            : azureOptions.ApiVersion;
+
+        var body = new ChatCompletionStreamRequestBody
+        {
+            Messages = request
+                .Messages.Select(m => new ChatCompletionMessage
+                {
+                    Role = MapRole(m.Role),
+                    Content = m.Content,
+                })
+                .ToArray(),
+            Temperature = request.Temperature,
+            MaxTokens = request.MaxTokens,
+            Stream = true,
+            StreamOptions = new ChatCompletionStreamOptions { IncludeUsage = true },
+        };
+
+        using var requestMessage = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/openai/deployments/{deploymentId}/chat/completions?api-version={apiVersion}"
+        )
+        {
+            Content = JsonContent.Create(body, options: s_jsonOptions),
+        };
+        requestMessage.Headers.Add("api-key", azureOptions.ApiKey);
+
+        await foreach (
+            var chunk in OpenAiCompatibleClient
+                .StreamFromRequestAsync(httpClient, requestMessage, deploymentId, cancellationToken)
+                .ConfigureAwait(false)
+        )
+        {
+            yield return chunk;
         }
     }
 
@@ -232,7 +332,9 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
                 LlmErrors.AuthenticationFailed(detail),
             System.Net.HttpStatusCode.TooManyRequests => LlmErrors.RateLimited(detail),
             System.Net.HttpStatusCode.RequestTimeout => LlmErrors.UpstreamUnavailable(detail),
-            >= System.Net.HttpStatusCode.InternalServerError => LlmErrors.UpstreamUnavailable(detail),
+            >= System.Net.HttpStatusCode.InternalServerError => LlmErrors.UpstreamUnavailable(
+                detail
+            ),
             _ => LlmErrors.InvalidRequest(detail),
         };
     }
@@ -253,6 +355,20 @@ internal sealed class AzureOpenAiLlmProvider : ILlmProvider
         public IReadOnlyList<ChatCompletionMessage> Messages { get; set; } = [];
         public double? Temperature { get; set; }
         public int? MaxTokens { get; set; }
+    }
+
+    private sealed class ChatCompletionStreamRequestBody
+    {
+        public IReadOnlyList<ChatCompletionMessage> Messages { get; set; } = [];
+        public double? Temperature { get; set; }
+        public int? MaxTokens { get; set; }
+        public bool? Stream { get; set; }
+        public ChatCompletionStreamOptions? StreamOptions { get; set; }
+    }
+
+    private sealed class ChatCompletionStreamOptions
+    {
+        public bool? IncludeUsage { get; set; }
     }
 
     private sealed class ChatCompletionMessage
