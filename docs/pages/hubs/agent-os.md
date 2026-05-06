@@ -72,6 +72,7 @@ part_of: []
 - [ADR-031 Inbox 单条打标签 V0：IInboxTaggingAppService 端口、JSON 数组结构化输出与 POST /api/inbox/items/{id}/tags 端点](../adrs/inbox-item-tagging-v0.md)
 - [ADR-032 Chat V0：分屏 UI + SSE 流式 + SQLite 持久化 + ChatSession 聚合 + 内置 system prompt](../adrs/chat-v0-streaming-and-persistence.md)
 - [ADR-033 Memory Ledger V0：MemoryLedgerEntry 聚合 + SQLite 持久化 + 软删 + 显式写入端点 + Memory 视图](../adrs/memory-ledger-v0-schema-and-storage.md)
+- [ADR-034 Inbox 显式沉淀进 Memory Ledger V0：IInboxToMemoryAppService 协调器、固定 scope=inbox 与 POST /api/inbox/items/{id}/promote-to-memory 端点](../adrs/inbox-to-memory-promotion-v0.md)
 
 已落地规则：
 
