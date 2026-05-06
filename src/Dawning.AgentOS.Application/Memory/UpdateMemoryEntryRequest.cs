@@ -18,15 +18,16 @@ namespace Dawning.AgentOS.Application.Memory;
 /// </remarks>
 /// <param name="Content">New content; <c>null</c> = leave unchanged.</param>
 /// <param name="Scope">New scope; <c>null</c> = leave unchanged.</param>
-/// <param name="Sensitivity">New sensitivity tier; <c>null</c> = leave unchanged.</param>
+/// <param name="Sensitivity">New sensitivity tier (case-insensitive <c>"Normal"</c> / <c>"Sensitive"</c> / <c>"HighSensitive"</c>); <c>null</c> = leave unchanged.</param>
 /// <param name="Status">
-/// New status; <c>null</c> = leave unchanged. Only legal transitions
-/// from the aggregate's state machine are allowed; illegal transitions
-/// (e.g. SoftDeleted → Archived) yield HTTP 422.
+/// New status (case-insensitive <c>"Active"</c> / <c>"Corrected"</c> / <c>"Archived"</c> / <c>"SoftDeleted"</c>);
+/// <c>null</c> = leave unchanged. Only legal transitions from the
+/// aggregate's state machine are allowed; illegal transitions (e.g.
+/// SoftDeleted → Archived) yield HTTP 422.
 /// </param>
 public sealed record UpdateMemoryEntryRequest(
     string? Content,
     string? Scope,
-    Domain.Memory.MemorySensitivity? Sensitivity,
-    Domain.Memory.MemoryStatus? Status
+    string? Sensitivity,
+    string? Status
 );

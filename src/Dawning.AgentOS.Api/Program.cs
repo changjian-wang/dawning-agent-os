@@ -2,6 +2,7 @@ using Dawning.AgentOS.Api.DependencyInjection;
 using Dawning.AgentOS.Api.Endpoints.Chat;
 using Dawning.AgentOS.Api.Endpoints.Inbox;
 using Dawning.AgentOS.Api.Endpoints.Llm;
+using Dawning.AgentOS.Api.Endpoints.Memory;
 using Dawning.AgentOS.Api.Endpoints.Runtime;
 using Dawning.AgentOS.Api.Middleware;
 using Dawning.AgentOS.Application.DependencyInjection;
@@ -32,6 +33,7 @@ app.MapRuntimeEndpoints();
 app.MapInboxEndpoints();
 app.MapLlmEndpoints();
 app.MapChatEndpoints();
+app.MapMemoryEndpoints();
 
 app.Run();
 

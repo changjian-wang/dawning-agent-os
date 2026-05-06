@@ -70,7 +70,7 @@ public sealed class MemoryLedgerAppServiceTests
         var sut = new MemoryLedgerAppService(clock.Object, repo.Object);
 
         var result = await sut.CreateExplicitAsync(
-            new CreateMemoryEntryRequest("x", "project:y", MemorySensitivity.Sensitive),
+            new CreateMemoryEntryRequest("x", "project:y", "Sensitive"),
             CancellationToken.None
         );
 
@@ -80,8 +80,8 @@ public sealed class MemoryLedgerAppServiceTests
         {
             Assert.That(dto.Content, Is.EqualTo("x"));
             Assert.That(dto.Scope, Is.EqualTo("project:y"));
-            Assert.That(dto.Sensitivity, Is.EqualTo(MemorySensitivity.Sensitive));
-            Assert.That(dto.Status, Is.EqualTo(MemoryStatus.Active));
+            Assert.That(dto.Sensitivity, Is.EqualTo("Sensitive"));
+            Assert.That(dto.Status, Is.EqualTo("Active"));
             Assert.That(dto.IsExplicit, Is.True);
             Assert.That(dto.Confidence, Is.EqualTo(1.0));
             Assert.That(dto.DeletedAt, Is.Null);
@@ -138,13 +138,17 @@ public sealed class MemoryLedgerAppServiceTests
         Assert.That(result.Errors[0].Code, Is.EqualTo("memory.scope.invalid"));
     }
 
-    [Test]
-    public async Task CreateExplicitAsync_ReturnsFieldFailure_WhenSensitivityUndefined()
+    [TestCase("NotARealLevel")]
+    [TestCase("99")]
+    [TestCase("")]
+    public async Task CreateExplicitAsync_ReturnsFieldFailure_WhenSensitivityUndefined(
+        string badSensitivity
+    )
     {
         var sut = NewServiceWithStrictRepository();
 
         var result = await sut.CreateExplicitAsync(
-            new CreateMemoryEntryRequest("x", null, (MemorySensitivity)99),
+            new CreateMemoryEntryRequest("x", null, badSensitivity),
             CancellationToken.None
         );
 
@@ -222,13 +226,15 @@ public sealed class MemoryLedgerAppServiceTests
         Assert.That(result.Errors[0].Code, Is.EqualTo("memory.offset.outOfRange"));
     }
 
-    [Test]
-    public async Task ListAsync_RejectsUndefinedStatus()
+    [TestCase("NotARealStatus")]
+    [TestCase("99")]
+    [TestCase("")]
+    public async Task ListAsync_RejectsUndefinedStatus(string badStatus)
     {
         var sut = NewServiceWithStrictRepository();
 
         var result = await sut.ListAsync(
-            new MemoryListQuery(50, 0, (MemoryStatus)99, false),
+            new MemoryListQuery(50, 0, badStatus, false),
             CancellationToken.None
         );
 
@@ -357,8 +363,8 @@ public sealed class MemoryLedgerAppServiceTests
             new UpdateMemoryEntryRequest(
                 "new content",
                 "project:dawning",
-                MemorySensitivity.Sensitive,
-                MemoryStatus.Corrected
+                "Sensitive",
+                "Corrected"
             ),
             CancellationToken.None
         );
@@ -368,8 +374,8 @@ public sealed class MemoryLedgerAppServiceTests
         {
             Assert.That(result.Value.Content, Is.EqualTo("new content"));
             Assert.That(result.Value.Scope, Is.EqualTo("project:dawning"));
-            Assert.That(result.Value.Sensitivity, Is.EqualTo(MemorySensitivity.Sensitive));
-            Assert.That(result.Value.Status, Is.EqualTo(MemoryStatus.Corrected));
+            Assert.That(result.Value.Sensitivity, Is.EqualTo("Sensitive"));
+            Assert.That(result.Value.Status, Is.EqualTo("Corrected"));
             Assert.That(result.Value.UpdatedAt, Is.EqualTo(Later));
         });
     }
@@ -391,7 +397,7 @@ public sealed class MemoryLedgerAppServiceTests
 
         var result = await sut.UpdateAsync(
             entry.Id,
-            new UpdateMemoryEntryRequest(null, null, null, MemoryStatus.Archived),
+            new UpdateMemoryEntryRequest(null, null, null, "Archived"),
             CancellationToken.None
         );
 
@@ -424,12 +430,12 @@ public sealed class MemoryLedgerAppServiceTests
 
         var result = await sut.UpdateAsync(
             entry.Id,
-            new UpdateMemoryEntryRequest(null, null, null, MemoryStatus.Active),
+            new UpdateMemoryEntryRequest(null, null, null, "Active"),
             CancellationToken.None
         );
 
         Assert.That(result.IsSuccess, Is.True);
-        Assert.That(result.Value.Status, Is.EqualTo(MemoryStatus.Active));
+        Assert.That(result.Value.Status, Is.EqualTo("Active"));
         Assert.That(result.Value.DeletedAt, Is.Null);
     }
 
@@ -450,12 +456,12 @@ public sealed class MemoryLedgerAppServiceTests
 
         var result = await sut.UpdateAsync(
             entry.Id,
-            new UpdateMemoryEntryRequest("new", null, null, MemoryStatus.Active),
+            new UpdateMemoryEntryRequest("new", null, null, "Active"),
             CancellationToken.None
         );
 
         Assert.That(result.IsSuccess, Is.True);
-        Assert.That(result.Value.Status, Is.EqualTo(MemoryStatus.Active));
+        Assert.That(result.Value.Status, Is.EqualTo("Active"));
     }
 
     [Test]
@@ -538,7 +544,7 @@ public sealed class MemoryLedgerAppServiceTests
         Assert.That(result.IsSuccess, Is.True);
         Assert.Multiple(() =>
         {
-            Assert.That(result.Value.Status, Is.EqualTo(MemoryStatus.SoftDeleted));
+            Assert.That(result.Value.Status, Is.EqualTo("SoftDeleted"));
             Assert.That(result.Value.DeletedAt, Is.EqualTo(Later));
             Assert.That(result.Value.UpdatedAt, Is.EqualTo(Later));
         });

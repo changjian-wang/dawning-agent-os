@@ -110,15 +110,18 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
             }
         }
 
-        if (request.Sensitivity is { } sensitivity && !Enum.IsDefined(sensitivity))
+        if (request.Sensitivity is not null)
         {
-            validationErrors.Add(
-                new DomainError(
-                    Code: "memory.sensitivity.invalid",
-                    Message: $"Memory sensitivity '{sensitivity}' is not a defined MemorySensitivity value.",
-                    Field: "sensitivity"
-                )
-            );
+            if (!TryParseSensitivity(request.Sensitivity, out _))
+            {
+                validationErrors.Add(
+                    new DomainError(
+                        Code: "memory.sensitivity.invalid",
+                        Message: $"Memory sensitivity '{request.Sensitivity}' is not a defined MemorySensitivity value.",
+                        Field: "sensitivity"
+                    )
+                );
+            }
         }
 
         if (validationErrors.Count > 0)
@@ -127,13 +130,17 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
         }
 
         var createdAt = _clock.UtcNow;
+        var sensitivity = request.Sensitivity is not null
+            ? ParseSensitivityOrThrow(request.Sensitivity)
+            : MemorySensitivity.Normal;
+
         var entry = MemoryLedgerEntry.Create(
             content: request.Content,
             scope: request.Scope,
             source: MemorySource.UserExplicit,
             isExplicit: true,
             confidence: 1.0,
-            sensitivity: request.Sensitivity ?? MemorySensitivity.Normal,
+            sensitivity: sensitivity,
             createdAtUtc: createdAt
         );
 
@@ -179,12 +186,12 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
             );
         }
 
-        if (query.Status is { } status && !Enum.IsDefined(status))
+        if (query.Status is { } statusText && !TryParseStatus(statusText, out _))
         {
             validationErrors.Add(
                 new DomainError(
                     Code: "memory.status.invalid",
-                    Message: $"Memory status '{status}' is not a defined MemoryStatus value.",
+                    Message: $"Memory status '{statusText}' is not a defined MemoryStatus value.",
                     Field: "status"
                 )
             );
@@ -195,9 +202,11 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
             return Result<MemoryEntryListPage>.Failure(validationErrors.ToArray());
         }
 
+        MemoryStatus? statusFilter = query.Status is null ? null : ParseStatusOrThrow(query.Status);
+
         var items = await _repository
             .ListAsync(
-                query.Status,
+                statusFilter,
                 query.IncludeSoftDeleted,
                 query.Limit,
                 query.Offset,
@@ -206,7 +215,7 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
             .ConfigureAwait(false);
 
         var total = await _repository
-            .CountAsync(query.Status, query.IncludeSoftDeleted, cancellationToken)
+            .CountAsync(statusFilter, query.IncludeSoftDeleted, cancellationToken)
             .ConfigureAwait(false);
 
         var dtos = new List<MemoryEntryDto>(items.Count);
@@ -304,23 +313,23 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
             }
         }
 
-        if (request.Sensitivity is { } sensitivity && !Enum.IsDefined(sensitivity))
+        if (request.Sensitivity is not null && !TryParseSensitivity(request.Sensitivity, out _))
         {
             validationErrors.Add(
                 new DomainError(
                     Code: "memory.sensitivity.invalid",
-                    Message: $"Memory sensitivity '{sensitivity}' is not a defined MemorySensitivity value.",
+                    Message: $"Memory sensitivity '{request.Sensitivity}' is not a defined MemorySensitivity value.",
                     Field: "sensitivity"
                 )
             );
         }
 
-        if (request.Status is { } status && !Enum.IsDefined(status))
+        if (request.Status is not null && !TryParseStatus(request.Status, out _))
         {
             validationErrors.Add(
                 new DomainError(
                     Code: "memory.status.invalid",
-                    Message: $"Memory status '{status}' is not a defined MemoryStatus value.",
+                    Message: $"Memory status '{request.Status}' is not a defined MemoryStatus value.",
                     Field: "status"
                 )
             );
@@ -351,14 +360,14 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
                 entry.UpdateScope(request.Scope, updatedAt);
             }
 
-            if (request.Sensitivity is { } newSensitivity)
+            if (request.Sensitivity is not null)
             {
-                entry.UpdateSensitivity(newSensitivity, updatedAt);
+                entry.UpdateSensitivity(ParseSensitivityOrThrow(request.Sensitivity), updatedAt);
             }
 
-            if (request.Status is { } newStatus)
+            if (request.Status is not null)
             {
-                ApplyStatusTransition(entry, newStatus, updatedAt);
+                ApplyStatusTransition(entry, ParseStatusOrThrow(request.Status), updatedAt);
             }
         }
         catch (MemoryLedgerInvalidStatusTransitionException ex)
@@ -475,13 +484,93 @@ public sealed class MemoryLedgerAppService(IClock clock, IMemoryLedgerRepository
             Id: entry.Id,
             Content: entry.Content,
             Scope: entry.Scope,
-            Source: entry.Source,
+            Source: entry.Source.ToString(),
             IsExplicit: entry.IsExplicit,
             Confidence: entry.Confidence,
-            Sensitivity: entry.Sensitivity,
-            Status: entry.Status,
+            Sensitivity: entry.Sensitivity.ToString(),
+            Status: entry.Status.ToString(),
             CreatedAt: entry.CreatedAt,
             UpdatedAt: entry.UpdatedAtUtc,
             DeletedAt: entry.DeletedAtUtc
         );
+
+    /// <summary>
+    /// Parses a sensitivity string (case-insensitive) and verifies it
+    /// is a defined <see cref="MemorySensitivity"/> name. Numeric
+    /// representations are rejected: only the named members are
+    /// accepted on the wire so the API surface is stable across
+    /// renumbering.
+    /// </summary>
+    private static bool TryParseSensitivity(string value, out MemorySensitivity result)
+    {
+        if (
+            !Enum.TryParse(value, ignoreCase: true, out result)
+            || !Enum.IsDefined(result)
+            || IsNumericLiteral(value)
+        )
+        {
+            result = default;
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryParseStatus(string value, out MemoryStatus result)
+    {
+        if (
+            !Enum.TryParse(value, ignoreCase: true, out result)
+            || !Enum.IsDefined(result)
+            || IsNumericLiteral(value)
+        )
+        {
+            result = default;
+            return false;
+        }
+
+        return true;
+    }
+
+    private static MemorySensitivity ParseSensitivityOrThrow(string value) =>
+        TryParseSensitivity(value, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"BUG: sensitivity '{value}' must have been validated before parse."
+            );
+
+    private static MemoryStatus ParseStatusOrThrow(string value) =>
+        TryParseStatus(value, out var parsed)
+            ? parsed
+            : throw new InvalidOperationException(
+                $"BUG: status '{value}' must have been validated before parse."
+            );
+
+    /// <summary>
+    /// <see cref="Enum.TryParse{TEnum}(string, bool, out TEnum)"/>
+    /// happily parses <c>"1"</c> into the corresponding enum member.
+    /// V0 rejects numeric literals so the API contract stays decoupled
+    /// from the underlying integer encoding.
+    /// </summary>
+    private static bool IsNumericLiteral(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return false;
+        }
+
+        var i = value[0] is '+' or '-' ? 1 : 0;
+        if (i >= value.Length)
+        {
+            return false;
+        }
+
+        for (; i < value.Length; i++)
+        {
+            if (!char.IsDigit(value[i]))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 }
