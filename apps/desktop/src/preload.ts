@@ -84,6 +84,58 @@ export type InboxIpcResult<T> =
   | { ok: true; value: T }
   | { ok: false; status: number; problem: InboxProblem };
 
+/**
+ * Read-side projection of the ADR-032 ChatSession aggregate. Field
+ * names mirror Api `ChatSessionDto` (`createdAt` / `updatedAt` —
+ * not `*Utc`; the JSON serializer uses the C# property name verbatim).
+ */
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatSessionListPage {
+  items: ChatSession[];
+  limit: number;
+  offset: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  /** "user" or "assistant" — see ADR-032 §C1. */
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  model: string | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+}
+
+export interface ChatCreateSessionResponse {
+  session: ChatSession;
+}
+
+/**
+ * Frame shape forwarded from main's SSE parser to the renderer via
+ * `webContents.send`. Per ADR-032 §决策 H1 there are exactly three
+ * frame kinds — `chunk`, `done`, `error`. The discriminator is the
+ * SSE `event:` line; the per-frame fields are extracted from the
+ * `data:` JSON payload.
+ */
+export type ChatStreamFrame =
+  | { kind: "chunk"; delta: string }
+  | {
+      kind: "done";
+      model: string | null;
+      promptTokens: number | null;
+      completionTokens: number | null;
+      durationMs: number;
+    }
+  | { kind: "error"; code: string; message: string };
+
 const api = {
   runtime: {
     /** Returns the current /api/runtime/status JSON; main attaches the token. */
@@ -138,6 +190,75 @@ const api = {
         "agentos:inbox:suggestTags",
         itemId,
       )) as InboxIpcResult<InboxItemTags>;
+    },
+  },
+  chat: {
+    /** GET /api/chat/sessions via main; ordered by updated_at DESC. */
+    listSessions: async (
+      query: { limit?: number; offset?: number } = {},
+    ): Promise<InboxIpcResult<ChatSessionListPage>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:chat:list-sessions",
+        query,
+      )) as InboxIpcResult<ChatSessionListPage>;
+    },
+    /** POST /api/chat/sessions via main; creates an empty session. */
+    createSession: async (): Promise<InboxIpcResult<ChatCreateSessionResponse>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:chat:create-session",
+      )) as InboxIpcResult<ChatCreateSessionResponse>;
+    },
+    /** GET /api/chat/sessions/{id}/messages via main; full history in send order. */
+    listMessages: async (sessionId: string): Promise<InboxIpcResult<ChatMessage[]>> => {
+      return (await ipcRenderer.invoke(
+        "agentos:chat:list-messages",
+        sessionId,
+      )) as InboxIpcResult<ChatMessage[]>;
+    },
+    /**
+     * POST /api/chat/sessions/{id}/messages via main; opens an SSE
+     * stream that surfaces here as a sequence of <see cref="ChatStreamFrame"/>
+     * delivered through the supplied <paramref name="onFrame"/>
+     * callback. The promise resolves when the stream ends; an `ok=false`
+     * result indicates a pre-stream failure (validation / 404 / auth)
+     * with no frames delivered. Mid-stream LLM failures arrive as a
+     * single <c>kind: "error"</c> frame and the promise still resolves
+     * <c>ok=true</c> — callers should track stream state from the frame
+     * sequence, not from the resolved Result.
+     */
+    sendMessage: async (
+      sessionId: string,
+      content: string,
+      onFrame: (frame: ChatStreamFrame) => void,
+    ): Promise<InboxIpcResult<void>> => {
+      // The correlation id keeps multiple concurrent streams independent
+      // even though V0 only ever drives one at a time — it costs us
+      // nothing and removes a "if you ever introduce parallelism here
+      // you'll regret not having ids" footgun.
+      const requestId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const channel = `agentos:chat:frame:${requestId}`;
+      const handler = (_event: unknown, frame: ChatStreamFrame): void => {
+        try {
+          onFrame(frame);
+        } catch (err) {
+          // Swallow renderer-side errors so a buggy callback can't
+          // freeze the IPC channel; the next frame still arrives.
+          console.error("[preload] chat onFrame handler threw:", err);
+        }
+      };
+      ipcRenderer.on(channel, handler);
+      try {
+        return (await ipcRenderer.invoke("agentos:chat:send-message", {
+          sessionId,
+          content,
+          requestId,
+        })) as InboxIpcResult<void>;
+      } finally {
+        ipcRenderer.off(channel, handler);
+      }
     },
   },
 };

@@ -12,41 +12,72 @@
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        padding: 20px;
+        padding: 0;
         background: #1a1a1a;
         color: #f5f5f5;
         font-size: 14px;
         line-height: 1.5;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
-      header {
+      /* Per ADR-032 §决策 A1 the workspace is a 65/35 split:
+         left = chat (primary), right = inbox (reference). Min-widths
+         keep both panes usable when the user shrinks the window
+         below the BrowserWindow minWidth (defense-in-depth). */
+      .split {
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(480px, 65fr) minmax(320px, 35fr);
+        min-height: 0;
+        border-top: 1px solid #2a2a2a;
+      }
+      .chat-pane {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        border-right: 1px solid #2a2a2a;
+      }
+      .inbox-pane {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        padding: 16px 20px;
+        overflow-y: auto;
+      }
+      header.app {
+        flex-shrink: 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        padding: 12px 20px;
       }
-      header .brand {
+      header.app .brand {
         display: flex;
         align-items: center;
         gap: 10px;
       }
-      header .brand img {
+      header.app .brand img {
         width: 28px;
         height: 35px;
         flex-shrink: 0;
       }
-      header h1 {
+      header.app h1 {
         font-size: 16px;
         font-weight: 500;
         margin: 0;
         opacity: 0.85;
       }
-      header .status {
+      header.app .status {
         font-size: 12px;
         opacity: 0.6;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       }
-      header .status.ok { color: #4ade80; opacity: 0.85; }
-      header .status.err { color: #f87171; opacity: 0.95; }
+      header.app .status.ok { color: #4ade80; opacity: 0.85; }
+      header.app .status.err { color: #f87171; opacity: 0.95; }
       section { margin-bottom: 20px; }
       label {
         display: block;
@@ -227,39 +258,209 @@
         padding: 12px;
         text-align: center;
       }
+
+      /* =========================================================
+         Chat pane — ADR-032 §决策 A1 / A2.
+         Vertical layout: tabs on top, message stream in the
+         middle (auto-scroll to bottom), composer at the bottom.
+         ========================================================= */
+      .chat-tabs {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 16px;
+        border-bottom: 1px solid #2a2a2a;
+        overflow-x: auto;
+        scrollbar-width: thin;
+      }
+      .chat-tab {
+        flex-shrink: 0;
+        max-width: 200px;
+        padding: 4px 12px;
+        font-size: 12px;
+        background: #1f1f1f;
+        border: 1px solid #2a2a2a;
+        border-radius: 999px;
+        color: #d5d5d5;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-family: inherit;
+      }
+      .chat-tab:hover { background: #262626; }
+      .chat-tab.active {
+        background: #1c3422;
+        border-color: #2f5a3a;
+        color: #d6f5e0;
+      }
+      .chat-tab.new {
+        font-weight: 500;
+        opacity: 0.85;
+      }
+      .chat-stream {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+      }
+      .chat-msg {
+        display: flex;
+        flex-direction: column;
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .chat-msg.user {
+        align-self: flex-end;
+        background: #1c3422;
+        border: 1px solid #2f5a3a;
+        color: #d6f5e0;
+      }
+      .chat-msg.assistant {
+        align-self: flex-start;
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+      }
+      .chat-msg.assistant.streaming::after {
+        content: "▍";
+        opacity: 0.6;
+        margin-left: 2px;
+        animation: chat-cursor 1s steps(2, start) infinite;
+      }
+      @keyframes chat-cursor {
+        to { visibility: hidden; }
+      }
+      .chat-msg .meta {
+        margin-top: 6px;
+        font-size: 11px;
+        opacity: 0.5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .chat-msg.error {
+        align-self: stretch;
+        max-width: none;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        color: #f87171;
+      }
+      .chat-empty {
+        margin: auto;
+        opacity: 0.5;
+        font-style: italic;
+        font-size: 13px;
+        text-align: center;
+      }
+      .chat-composer {
+        flex-shrink: 0;
+        border-top: 1px solid #2a2a2a;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .chat-composer textarea {
+        width: 100%;
+        min-height: 60px;
+        max-height: 200px;
+        background: #0d0d0d;
+        border: 1px solid #2a2a2a;
+        border-radius: 6px;
+        color: #f5f5f5;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 8px 10px;
+        outline: none;
+        resize: vertical;
+      }
+      .chat-composer textarea:focus { border-color: #4ade80; }
+      .chat-composer .composer-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      .chat-composer .hint {
+        font-size: 11px;
+        opacity: 0.5;
+      }
+      .chat-error {
+        margin: 0 16px 12px;
+        padding: 8px 10px;
+        background: #2a0d0d;
+        border: 1px solid #5a1d1d;
+        border-radius: 4px;
+        color: #f87171;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+      }
     </style>
   </head>
   <body>
-    <header>
+    <header class="app">
       <div class="brand">
         <img src="./assets/logo.svg" alt="dawning-agent-os" />
-        <h1>dawning-agent-os · inbox V0</h1>
+        <h1>dawning-agent-os · chat V0</h1>
       </div>
       <span id="status" class="status">connecting…</span>
     </header>
 
-    <section>
-      <label for="content">Capture a thought (≤ 4096 chars)</label>
-      <textarea id="content" rows="4" placeholder="What's on your mind?"></textarea>
-      <div class="row">
-        <input id="source" type="text" placeholder="source (optional, ≤ 64 chars)" />
-        <button id="capture-btn" class="primary" type="button">Capture</button>
-      </div>
-      <div id="capture-error" class="error" hidden></div>
-    </section>
+    <!-- Per ADR-032 §决策 A1: 65/35 split. Chat is the primary pane. -->
+    <div class="split">
+      <main class="chat-pane" aria-label="chat">
+        <div class="chat-tabs" id="chat-tabs"></div>
+        <div class="chat-stream" id="chat-stream">
+          <div class="chat-empty" id="chat-empty">connecting…</div>
+        </div>
+        <div id="chat-error" class="chat-error" hidden></div>
+        <div class="chat-composer">
+          <textarea
+            id="chat-input"
+            rows="3"
+            placeholder="给主人发条消息…  (Cmd/Ctrl+Enter 发送)"
+            disabled
+          ></textarea>
+          <div class="composer-row">
+            <span class="hint" id="chat-hint">主人，正在准备会话…</span>
+            <button id="chat-send" class="primary" type="button" disabled>Send</button>
+          </div>
+        </div>
+      </main>
 
-    <section>
-      <div class="list-header">
-        <h2>Recent items</h2>
-        <span class="count" id="list-count">—</span>
-      </div>
-      <div class="row" style="margin-top: 0; margin-bottom: 8px;">
-        <button id="refresh-btn" type="button">Refresh</button>
-      </div>
-      <ul id="list"></ul>
-      <div id="list-empty" class="empty" hidden>no items yet · capture one above</div>
-      <div id="list-error" class="error" hidden></div>
-    </section>
+      <aside class="inbox-pane" aria-label="inbox">
+        <section>
+          <label for="content">Capture a thought (≤ 4096 chars)</label>
+          <textarea id="content" rows="4" placeholder="What's on your mind?"></textarea>
+          <div class="row">
+            <input id="source" type="text" placeholder="source (optional, ≤ 64 chars)" />
+            <button id="capture-btn" class="primary" type="button">Capture</button>
+          </div>
+          <div id="capture-error" class="error" hidden></div>
+        </section>
+
+        <section>
+          <div class="list-header">
+            <h2>Recent items</h2>
+            <span class="count" id="list-count">—</span>
+          </div>
+          <div class="row" style="margin-top: 0; margin-bottom: 8px;">
+            <button id="refresh-btn" type="button">Refresh</button>
+          </div>
+          <ul id="list"></ul>
+          <div id="list-empty" class="empty" hidden>no items yet · capture one above</div>
+          <div id="list-error" class="error" hidden></div>
+        </section>
+      </aside>
+    </div>
 
     <script>
       // Per ADR-027 §1 / §6 / §7 this script is intentionally inline.
@@ -282,6 +483,7 @@
       };
 
       const bridgeMissing = !(window.agentos && window.agentos.runtime && window.agentos.inbox);
+      const chatBridge = window.agentos && window.agentos.chat;
 
       const setStatus = (text, kind) => {
         els.status.textContent = text;
@@ -548,12 +750,356 @@
         }
       });
 
+      // ===========================================================
+      // Chat module — ADR-032 §决策 A1 / A2 / I1 / J1.
+      //
+      //   - On startup we list sessions; if empty we create one and
+      //     pick it as current. Otherwise we pick the most-recent
+      //     session (server already returns updated_at DESC, so
+      //     items[0] is "the latest").
+      //   - The mini-sidebar is a horizontal tab bar across the top
+      //     of the chat pane (§A2). The "+" tab opens a new session.
+      //   - The composer streams replies via the SSE bridge: we send
+      //     the user turn, append an empty assistant bubble, and
+      //     accumulate `chunk` deltas into it. On `done` we re-fetch
+      //     `listSessions` so the sidebar picks up the auto-derived
+      //     title and updated_at ordering. On `error` the assistant
+      //     bubble is dropped and a red error bubble takes its place.
+      //   - Per ADR-032 §决策 J1 the user message is persisted by the
+      //     server BEFORE the LLM call, so even if the stream dies we
+      //     don't lose what the user typed; on subsequent send the
+      //     server resends the canonical history.
+      // ===========================================================
+      const chat = (() => {
+        const tabsEl = $('chat-tabs');
+        const streamEl = $('chat-stream');
+        const emptyEl = $('chat-empty');
+        const errorEl = $('chat-error');
+        const inputEl = $('chat-input');
+        const sendBtn = $('chat-send');
+        const hintEl = $('chat-hint');
+
+        let sessions = [];
+        let currentSessionId = null;
+        let streaming = false;
+
+        const showChatError = (text) => {
+          errorEl.textContent = text;
+          errorEl.removeAttribute('hidden');
+        };
+        const hideChatError = () => {
+          errorEl.setAttribute('hidden', '');
+          errorEl.textContent = '';
+        };
+
+        const setHint = (text) => { hintEl.textContent = text; };
+
+        const setComposerEnabled = (enabled) => {
+          inputEl.disabled = !enabled;
+          sendBtn.disabled = !enabled;
+        };
+
+        const renderTabs = () => {
+          tabsEl.innerHTML = '';
+          for (const session of sessions) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chat-tab' + (session.id === currentSessionId ? ' active' : '');
+            btn.textContent = session.title || '新会话';
+            btn.title = session.title || '新会话';
+            btn.addEventListener('click', () => { void switchTo(session.id); });
+            tabsEl.appendChild(btn);
+          }
+          const newBtn = document.createElement('button');
+          newBtn.type = 'button';
+          newBtn.className = 'chat-tab new';
+          newBtn.textContent = '+ 新会话';
+          newBtn.title = '新建会话';
+          newBtn.addEventListener('click', () => { void createNewSession(); });
+          tabsEl.appendChild(newBtn);
+        };
+
+        const renderEmptyMessages = () => {
+          streamEl.innerHTML = '';
+          const hint = document.createElement('div');
+          hint.className = 'chat-empty';
+          hint.textContent = '主人，请说。';
+          streamEl.appendChild(hint);
+        };
+
+        const renderMessages = (messages) => {
+          streamEl.innerHTML = '';
+          if (!messages || messages.length === 0) {
+            renderEmptyMessages();
+            return;
+          }
+          for (const msg of messages) {
+            streamEl.appendChild(renderBubble(msg));
+          }
+          scrollToBottom();
+        };
+
+        const renderBubble = (msg) => {
+          const div = document.createElement('div');
+          div.className = 'chat-msg ' + (msg.role === 'user' ? 'user' : 'assistant');
+          const text = document.createElement('div');
+          text.className = 'text';
+          text.textContent = msg.content || '';
+          div.appendChild(text);
+          if (msg.role === 'assistant'
+              && (msg.model || typeof msg.promptTokens === 'number'
+                  || typeof msg.completionTokens === 'number')) {
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const parts = [];
+            if (msg.model) parts.push(msg.model);
+            if (typeof msg.promptTokens === 'number'
+                && typeof msg.completionTokens === 'number') {
+              parts.push('prompt ' + msg.promptTokens
+                + ' + completion ' + msg.completionTokens + ' tokens');
+            }
+            meta.textContent = parts.join(' · ');
+            div.appendChild(meta);
+          }
+          return div;
+        };
+
+        const scrollToBottom = () => {
+          streamEl.scrollTop = streamEl.scrollHeight;
+        };
+
+        const loadSessions = async () => {
+          const result = await chatBridge.listSessions({ limit: 50, offset: 0 });
+          if (!result.ok) {
+            throw new Error(formatProblem(result.problem, result.status));
+          }
+          sessions = (result.value && result.value.items) || [];
+        };
+
+        const loadMessages = async (sessionId) => {
+          const result = await chatBridge.listMessages(sessionId);
+          if (!result.ok) {
+            throw new Error(formatProblem(result.problem, result.status));
+          }
+          renderMessages(result.value || []);
+        };
+
+        const switchTo = async (sessionId) => {
+          if (streaming || sessionId === currentSessionId) {
+            return;
+          }
+          currentSessionId = sessionId;
+          renderTabs();
+          hideChatError();
+          try {
+            await loadMessages(sessionId);
+            setHint('主人，请说。');
+            setComposerEnabled(true);
+            inputEl.focus();
+          } catch (err) {
+            showChatError((err && err.message) ? err.message : String(err));
+            setHint('载入历史失败');
+          }
+        };
+
+        const createNewSession = async () => {
+          if (streaming) return;
+          hideChatError();
+          setComposerEnabled(false);
+          setHint('正在创建新会话…');
+          try {
+            const result = await chatBridge.createSession();
+            if (!result.ok) {
+              throw new Error(formatProblem(result.problem, result.status));
+            }
+            await loadSessions();
+            currentSessionId = result.value.session.id;
+            renderTabs();
+            renderEmptyMessages();
+            setHint('主人，请说。');
+            setComposerEnabled(true);
+            inputEl.focus();
+          } catch (err) {
+            showChatError((err && err.message) ? err.message : String(err));
+            setHint('创建会话失败');
+            setComposerEnabled(true);
+          }
+        };
+
+        const send = async () => {
+          if (streaming) return;
+          if (!currentSessionId) {
+            showChatError('当前没有会话；请先点击 "+ 新会话"。');
+            return;
+          }
+          const content = inputEl.value;
+          if (!content.trim()) {
+            return;
+          }
+          hideChatError();
+
+          // If this is the first turn the stream view still shows the
+          // placeholder; clear it so the user bubble lands at the top.
+          if (streamEl.querySelector('.chat-empty')) {
+            streamEl.innerHTML = '';
+          }
+
+          // 1) Optimistic user bubble — server already accepted the
+          //    user turn before LLM call (ADR-032 §决策 J1), so even if
+          //    the stream dies the visual stays consistent.
+          const userBubble = renderBubble({ role: 'user', content });
+          streamEl.appendChild(userBubble);
+
+          // 2) Empty assistant bubble we'll fill from chunk frames.
+          const assistantBubble = document.createElement('div');
+          assistantBubble.className = 'chat-msg assistant streaming';
+          const assistantText = document.createElement('div');
+          assistantText.className = 'text';
+          assistantBubble.appendChild(assistantText);
+          streamEl.appendChild(assistantBubble);
+          scrollToBottom();
+
+          inputEl.value = '';
+          setComposerEnabled(false);
+          setHint('正在生成回复…');
+          streaming = true;
+
+          let sawError = false;
+          let assistantText_ = '';
+          try {
+            const result = await chatBridge.sendMessage(
+              currentSessionId,
+              content,
+              (frame) => {
+                if (frame.kind === 'chunk') {
+                  if (typeof frame.delta === 'string') {
+                    assistantText_ += frame.delta;
+                    assistantText.textContent = assistantText_;
+                    scrollToBottom();
+                  }
+                } else if (frame.kind === 'done') {
+                  assistantBubble.classList.remove('streaming');
+                  if (frame.model
+                      || typeof frame.promptTokens === 'number'
+                      || typeof frame.completionTokens === 'number'
+                      || typeof frame.durationMs === 'number') {
+                    const meta = document.createElement('div');
+                    meta.className = 'meta';
+                    const parts = [];
+                    if (frame.model) parts.push(frame.model);
+                    if (typeof frame.promptTokens === 'number'
+                        && typeof frame.completionTokens === 'number') {
+                      parts.push('prompt ' + frame.promptTokens
+                        + ' + completion ' + frame.completionTokens + ' tokens');
+                    }
+                    if (typeof frame.durationMs === 'number') {
+                      parts.push(frame.durationMs + 'ms');
+                    }
+                    meta.textContent = parts.join(' · ');
+                    assistantBubble.appendChild(meta);
+                  }
+                } else if (frame.kind === 'error') {
+                  sawError = true;
+                  // Replace the partial assistant bubble with an error
+                  // bubble so the visual doesn't claim a half answer
+                  // is "the answer".
+                  assistantBubble.classList.remove('streaming', 'assistant');
+                  assistantBubble.classList.add('error');
+                  const code = (frame.code || 'llm.upstreamUnavailable');
+                  const message = (frame.message || 'Stream failed.');
+                  assistantText.textContent = code + ' — ' + message;
+                }
+              },
+            );
+            if (!result.ok) {
+              // Pre-stream failure (validation / 404 / auth). Rollback
+              // optimistic bubbles and surface a JSON ProblemDetails.
+              assistantBubble.remove();
+              userBubble.remove();
+              if (streamEl.children.length === 0) {
+                renderEmptyMessages();
+              }
+              showChatError(formatProblem(result.problem, result.status));
+              // Restore the user's typed content so they can retry
+              // without re-typing.
+              inputEl.value = content;
+            }
+          } catch (err) {
+            assistantBubble.classList.remove('streaming', 'assistant');
+            assistantBubble.classList.add('error');
+            assistantText.textContent =
+              (err && err.message) ? err.message : String(err);
+            sawError = true;
+          } finally {
+            streaming = false;
+            setComposerEnabled(true);
+            setHint('主人，请说。');
+            inputEl.focus();
+          }
+
+          // Refresh the sidebar so the auto-derived title and
+          // updated_at-based ordering catch up. Skip the call when
+          // the request never reached the LLM (we'd just re-fetch the
+          // same list).
+          if (!sawError || assistantText_.length > 0) {
+            try {
+              await loadSessions();
+              renderTabs();
+            } catch (_) {
+              // Sidebar refresh is cosmetic; failure here doesn't
+              // affect the conversation that just happened.
+            }
+          }
+        };
+
+        const init = async () => {
+          if (!chatBridge) {
+            setHint('chat bridge 缺失');
+            showChatError('preload bridge missing — run `pnpm run dev`');
+            return;
+          }
+          try {
+            await loadSessions();
+            // §决策 I1: empty list ⇒ POST a session and use it as current.
+            if (sessions.length === 0) {
+              const created = await chatBridge.createSession();
+              if (!created.ok) {
+                throw new Error(formatProblem(created.problem, created.status));
+              }
+              await loadSessions();
+              currentSessionId = created.value.session.id;
+            } else {
+              currentSessionId = sessions[0].id;
+            }
+            renderTabs();
+            await loadMessages(currentSessionId);
+            setHint('主人，请说。');
+            setComposerEnabled(true);
+          } catch (err) {
+            const text = (err && err.message) ? err.message : String(err);
+            showChatError(text);
+            setHint('chat 初始化失败');
+          }
+        };
+
+        sendBtn.addEventListener('click', () => { void send(); });
+        inputEl.addEventListener('keydown', (ev) => {
+          if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') {
+            ev.preventDefault();
+            void send();
+          }
+        });
+
+        return { init };
+      })();
+
       if (bridgeMissing) {
         setStatus('preload bridge missing', 'err');
         showError(els.listErr, 'preload bridge missing — run `pnpm run dev` (which builds preload first)');
       } else {
         refreshStatus();
         refreshList();
+        void chat.init();
       }
     </script>
   </body>

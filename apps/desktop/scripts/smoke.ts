@@ -94,6 +94,109 @@ async function listInboxItems(
   return (await response.json()) as InboxListPage;
 }
 
+interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ChatSessionListPage {
+  items: ChatSession[];
+  limit: number;
+  offset: number;
+}
+
+interface ChatCreateSessionResponse {
+  session: ChatSession;
+}
+
+interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * Per ADR-032 §决策 G1 the chat surface mirrors inbox's
+ * smoke-testable RESTful shape: POST creates a session, GET lists
+ * sessions, GET .../messages returns the (empty for a fresh session)
+ * history. We stop short of POST .../messages because that path
+ * requires a real LLM provider and credentials; the integration tests
+ * already cover the streaming end-to-end with a mocked provider.
+ */
+async function probeChatSessionLifecycle(
+  baseUrl: string,
+  token: string,
+): Promise<void> {
+  const root = baseUrl.replace(/\/+$/u, "");
+  const createResponse = await fetch(`${root}/api/chat/sessions`, {
+    method: "POST",
+    headers: { [HEADER_NAME]: token },
+  });
+  if (!createResponse.ok) {
+    throw new Error(
+      `POST /api/chat/sessions returned ${createResponse.status} ${createResponse.statusText}`,
+    );
+  }
+  const created = (await createResponse.json()) as ChatCreateSessionResponse;
+  if (
+    typeof created.session?.id !== "string" ||
+    !UUIDV7_PATTERN.test(created.session.id)
+  ) {
+    throw new Error(
+      `POST /api/chat/sessions returned non-UUIDv7 id: '${created.session?.id ?? "<missing>"}'`,
+    );
+  }
+  if (typeof created.session.title !== "string" || created.session.title.length === 0) {
+    throw new Error(
+      `POST /api/chat/sessions returned empty/missing title (placeholder expected)`,
+    );
+  }
+
+  const listResponse = await fetch(`${root}/api/chat/sessions?limit=10&offset=0`, {
+    headers: { [HEADER_NAME]: token },
+  });
+  if (!listResponse.ok) {
+    throw new Error(
+      `GET /api/chat/sessions returned ${listResponse.status} ${listResponse.statusText}`,
+    );
+  }
+  const page = (await listResponse.json()) as ChatSessionListPage;
+  if (!Array.isArray(page.items) || page.items.length < 1) {
+    throw new Error(
+      `GET /api/chat/sessions returned items.length=${page.items?.length ?? "?"}, expected ≥1`,
+    );
+  }
+  const found = page.items.find((s) => s.id === created.session.id);
+  if (found === undefined) {
+    throw new Error(
+      `GET /api/chat/sessions did not include the just-created session id '${created.session.id}'`,
+    );
+  }
+
+  const messagesResponse = await fetch(
+    `${root}/api/chat/sessions/${encodeURIComponent(created.session.id)}/messages`,
+    { headers: { [HEADER_NAME]: token } },
+  );
+  if (!messagesResponse.ok) {
+    throw new Error(
+      `GET /api/chat/sessions/{id}/messages returned ${messagesResponse.status} ${messagesResponse.statusText}`,
+    );
+  }
+  const messages = (await messagesResponse.json()) as ChatMessage[];
+  if (!Array.isArray(messages) || messages.length !== 0) {
+    throw new Error(
+      `GET /api/chat/sessions/{id}/messages returned non-empty list for a fresh session`,
+    );
+  }
+
+  console.log(
+    `[smoke] chat session ok (id=${created.session.id}, listed=${page.items.length}, history=0)`,
+  );
+}
+
 async function main(): Promise<void> {
   const token = randomUUID();
   // Smoke runs do not stream stdout to console by default — the
@@ -141,6 +244,8 @@ async function main(): Promise<void> {
     console.log(
       `[smoke] inbox list ok (total=${page.total}, first=${first.id})`,
     );
+
+    await probeChatSessionLifecycle(baseUrl, token);
 
     console.log("[smoke] PASS");
   } catch (err) {
