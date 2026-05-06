@@ -1,6 +1,7 @@
 using Dawning.AgentOS.Api.Results;
 using Dawning.AgentOS.Application.Inbox;
 using Dawning.AgentOS.Application.Interfaces;
+using Dawning.AgentOS.Application.Memory;
 using Microsoft.AspNetCore.Http;
 
 namespace Dawning.AgentOS.Api.Endpoints.Inbox;
@@ -41,6 +42,18 @@ namespace Dawning.AgentOS.Api.Endpoints.Inbox;
 ///     </description>
 ///   </item>
 /// </list>
+/// Per ADR-034 a fifth endpoint joins the group:
+/// <list type="number">
+///   <item>
+///     <description>
+///       <c>POST /api/inbox/items/{id:guid}/promote-to-memory</c> —
+///       persist the inbox item's content as a new
+///       <see cref="Domain.Memory.MemoryLedgerEntry"/> with
+///       <c>source = InboxAction</c>, <c>scope = "inbox"</c>; V0 does
+///       not dedup so repeated invocations yield distinct ledger rows.
+///     </description>
+///   </item>
+/// </list>
 /// </summary>
 /// <remarks>
 /// Auth is enforced by <see cref="Middleware.StartupTokenMiddleware"/>
@@ -53,6 +66,9 @@ namespace Dawning.AgentOS.Api.Endpoints.Inbox;
 /// <c>inbox.notFound</c> → 404, <c>inbox.taggingParseFailed</c> → 422,
 /// and <c>llm.*</c> → 401/429/502/400; the endpoints map those manually
 /// rather than polluting the shared mapper with route-specific rules.
+/// For promote-to-memory, ADR-034 §决策 G1 reuses
+/// <c>inbox.notFound</c> → 404 and 200 → <see cref="MemoryEntryDto"/>
+/// projection; no LLM call, no extra non-field codes.
 /// </remarks>
 public static class InboxEndpoints
 {
@@ -201,6 +217,49 @@ public static class InboxEndpoints
                     "llm.rateLimited" => StatusCodes.Status429TooManyRequests,
                     "llm.upstreamUnavailable" => StatusCodes.Status502BadGateway,
                     "llm.invalidRequest" => StatusCodes.Status400BadRequest,
+                    _ => StatusCodes.Status500InternalServerError,
+                };
+
+                return TypedResults.Problem(
+                    statusCode: statusCode,
+                    title: error.Code,
+                    detail: error.Message,
+                    extensions: new Dictionary<string, object?>(StringComparer.Ordinal)
+                    {
+                        ["code"] = error.Code,
+                    }
+                );
+            }
+        );
+
+        // ADR-034 §决策 E1 / G1: POST /api/inbox/items/{id:guid}/promote-to-memory.
+        // Manual error mapping for inbox.notFound → 404 mirrors
+        // /summarize and /tags rather than going through the shared
+        // ResultHttpExtensions mapper (which would surface the code as
+        // 422). Success returns the persisted MemoryEntryDto so the
+        // renderer can reflect the new ledger row without an extra
+        // round-trip.
+        group.MapPost(
+            "/items/{id:guid}/promote-to-memory",
+            async (
+                Guid id,
+                IInboxToMemoryAppService promotionAppService,
+                CancellationToken cancellationToken
+            ) =>
+            {
+                var result = await promotionAppService
+                    .PromoteAsync(id, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (result.IsSuccess)
+                {
+                    return (IResult)TypedResults.Ok(result.Value);
+                }
+
+                var error = result.Errors[0];
+                var statusCode = error.Code switch
+                {
+                    InboxErrors.ItemNotFoundCode => StatusCodes.Status404NotFound,
                     _ => StatusCodes.Status500InternalServerError,
                 };
 
