@@ -39,8 +39,17 @@
       here. The concrete DI container, web stack, persistence drivers
       and logging implementations remain forbidden by LayeringTests.
     -->
+    <!-- Per ADR-038 §决策 F1 the layer's abstractions-only carve-out
+         (originally established by ADR-023 §5 for the DI container) is
+         extended to Microsoft.Extensions.Logging.Abstractions so
+         ChatMemoryRetriever (and any future AppService that needs
+         silent-degrade telemetry) can take an ILogger<T> dependency
+         without binding a sink. The concrete provider package
+         Microsoft.Extensions.Logging stays forbidden by
+         LayeringTests.Application_DoesNotReferenceFrameworkAdapterPackages. -->
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Dawning.AgentOS.Abstractions\Dawning.AgentOS.Abstractions.csproj" />

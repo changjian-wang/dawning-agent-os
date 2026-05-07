@@ -471,6 +471,14 @@ public sealed class LayeringTests
         // Microsoft.Extensions.DependencyInjection.Abstractions. The
         // concrete container Microsoft.Extensions.DependencyInjection
         // remains forbidden here; only the abstractions package is allowed.
+        //
+        // Per ADR-038 §决策 F1 (silent-degrade memory retrieval needs a
+        // warn-level log) the same abstractions-only carve-out is extended
+        // to Microsoft.Extensions.Logging.Abstractions: the Application
+        // layer may take an ILogger<T> dependency without binding any sink
+        // implementation. The concrete provider package
+        // Microsoft.Extensions.Logging remains forbidden — only the
+        // abstractions package is allowed, mirroring the DI rule.
         var refs = ReferencedAssemblyNames(Application);
 
         var forbidden = new[]
@@ -481,7 +489,6 @@ public sealed class LayeringTests
             "Microsoft.AspNetCore.App",
             "Microsoft.Extensions.DependencyInjection",
             "Microsoft.Extensions.Logging",
-            "Microsoft.Extensions.Logging.Abstractions",
             "Microsoft.Extensions.Configuration",
             "Microsoft.Extensions.Configuration.Abstractions",
             "Microsoft.Data.Sqlite",
