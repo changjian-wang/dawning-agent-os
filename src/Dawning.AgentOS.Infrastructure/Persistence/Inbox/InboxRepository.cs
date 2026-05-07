@@ -1,24 +1,22 @@
-using System.Data.Common;
 using System.Globalization;
-using Dapper;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Inbox;
+using Dawning.ORM.Dapper;
 
 namespace Dawning.AgentOS.Infrastructure.Persistence.Inbox;
 
 /// <summary>
-/// V0 Dapper-based implementation of <see cref="IInboxRepository"/>. Per
-/// ADR-026 §5 each operation opens a fresh ADO.NET connection through
-/// <see cref="IDbConnectionFactory"/> and disposes it via
-/// <c>await using</c>; the factory itself is scoped, the repository
-/// scoped accordingly.
+/// Infrastructure implementation of <see cref="IInboxRepository"/> using
+/// <c>Dawning.ORM.Dapper</c>. Per ADR-036 the repository follows the
+/// same style as the dawning gateway stack: PO persistence entity +
+/// attribute mapping + aggregate rehydrate on read.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Per ADR-024 §F1 / §G1 this class is the first place Dapper appears in
-/// the codebase; the LayeringTests architecture rules already forbid
-/// Dapper from Application / Domain / Api, so the dependency stays
-/// strictly contained inside Infrastructure.
+/// Each operation opens a fresh ADO.NET connection through
+/// <see cref="IDbConnectionFactory"/> and disposes it via
+/// <c>await using</c>; the factory itself is scoped, the repository
+/// scoped accordingly.
 /// </para>
 /// <para>
 /// All timestamps round-trip as ISO-8601 strings through the
@@ -32,25 +30,6 @@ public sealed class InboxRepository(IDbConnectionFactory connectionFactory) : II
 {
     private const string IsoRoundTripFormat = "O";
 
-    private const string InsertSql =
-        "INSERT INTO inbox_items "
-        + "(id, content, source, captured_at_utc, created_at_utc) "
-        + "VALUES (@id, @content, @source, @capturedAtUtc, @createdAtUtc)";
-
-    private const string ListSql =
-        "SELECT id, content, source, captured_at_utc, created_at_utc "
-        + "FROM inbox_items "
-        + "ORDER BY captured_at_utc DESC, id DESC "
-        + "LIMIT @limit OFFSET @offset";
-
-    private const string GetByIdSql =
-        "SELECT id, content, source, captured_at_utc, created_at_utc "
-        + "FROM inbox_items "
-        + "WHERE id = @id "
-        + "LIMIT 1";
-
-    private const string CountSql = "SELECT COUNT(*) FROM inbox_items";
-
     private readonly IDbConnectionFactory _connectionFactory =
         connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
 
@@ -63,26 +42,8 @@ public sealed class InboxRepository(IDbConnectionFactory connectionFactory) : II
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var parameters = new
-        {
-            id = item.Id.ToString(),
-            content = item.Content,
-            source = item.Source,
-            capturedAtUtc = item.CapturedAtUtc.ToString(
-                IsoRoundTripFormat,
-                CultureInfo.InvariantCulture
-            ),
-            createdAtUtc = item.CreatedAt.ToString(
-                IsoRoundTripFormat,
-                CultureInfo.InvariantCulture
-            ),
-        };
-
-        await connection
-            .ExecuteAsync(
-                new CommandDefinition(InsertSql, parameters, cancellationToken: cancellationToken)
-            )
-            .ConfigureAwait(false);
+        var entity = ToEntity(item);
+        _ = await connection.InsertAsync(entity).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -96,20 +57,19 @@ public sealed class InboxRepository(IDbConnectionFactory connectionFactory) : II
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var rows = await connection
-            .QueryAsync<InboxItemRow>(
-                new CommandDefinition(
-                    ListSql,
-                    new { limit, offset },
-                    cancellationToken: cancellationToken
-                )
-            )
+        var entities = await connection
+            .Builder<InboxItemEntity>()
+            .OrderByDescending(x => x.CapturedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync()
             .ConfigureAwait(false);
 
-        var items = new List<InboxItem>();
-        foreach (var row in rows)
+        var items = new List<InboxItem>(entities.Count);
+        foreach (var entity in entities)
         {
-            items.Add(MapRow(row));
+            items.Add(MapEntity(entity));
         }
         return items;
     }
@@ -121,62 +81,62 @@ public sealed class InboxRepository(IDbConnectionFactory connectionFactory) : II
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var row = await connection
-            .QuerySingleOrDefaultAsync<InboxItemRow>(
-                new CommandDefinition(
-                    GetByIdSql,
-                    new { id = id.ToString() },
-                    cancellationToken: cancellationToken
-                )
-            )
+        // Use the QueryBuilder predicate path rather than connection.GetAsync<T>(id):
+        // GetAsync routes the row through a dynamic-typed callsite which the runtime
+        // binder fails to convert back to T (see Dawning.ORM.Dapper 1.3.0). The builder
+        // path is statically typed end-to-end and works with the same attribute mapping.
+        var idValue = id.ToString();
+        var entity = await connection
+            .Builder<InboxItemEntity>()
+            .Where(x => x.Id == idValue)
+            .FirstOrDefaultAsync()
             .ConfigureAwait(false);
 
-        return row is null ? null : MapRow(row);
+        return entity is null ? null : MapEntity(entity);
     }
 
     /// <inheritdoc />
     public async Task<long> CountAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var connection = await _connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return await connection
-            .ExecuteScalarAsync<long>(
-                new CommandDefinition(CountSql, cancellationToken: cancellationToken)
-            )
+            .Builder<InboxItemEntity>()
+            .CountAsync()
             .ConfigureAwait(false);
     }
 
-    private static InboxItem MapRow(InboxItemRow row)
+    private static InboxItemEntity ToEntity(InboxItem item) =>
+        new()
+        {
+            Id = item.Id.ToString(),
+            Content = item.Content,
+            Source = item.Source,
+            CapturedAtUtc = item.CapturedAtUtc.ToString(
+                IsoRoundTripFormat,
+                CultureInfo.InvariantCulture
+            ),
+            CreatedAtUtc = item.CreatedAt.ToString(IsoRoundTripFormat, CultureInfo.InvariantCulture),
+        };
+
+    private static InboxItem MapEntity(InboxItemEntity entity)
     {
-        var id = Guid.Parse(row.Id, CultureInfo.InvariantCulture);
+        var id = Guid.Parse(entity.Id, CultureInfo.InvariantCulture);
         var capturedAt = DateTimeOffset.Parse(
-            row.CapturedAtUtc,
+            entity.CapturedAtUtc,
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
         );
         var createdAt = DateTimeOffset.Parse(
-            row.CreatedAtUtc,
+            entity.CreatedAtUtc,
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
         );
 
-        return InboxItem.Rehydrate(id, row.Content, row.Source, capturedAt, createdAt);
-    }
-
-    /// <summary>
-    /// Dapper materialization shape; column names are snake_case per
-    /// the migration, mapped through the <c>matchNamesWithUnderscores</c>
-    /// option that <see cref="InfrastructureServiceCollectionExtensions"/>
-    /// turns on at startup.
-    /// </summary>
-    private sealed class InboxItemRow
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
-        public string? Source { get; set; }
-        public string CapturedAtUtc { get; set; } = string.Empty;
-        public string CreatedAtUtc { get; set; } = string.Empty;
+        return InboxItem.Rehydrate(id, entity.Content, entity.Source, capturedAt, createdAt);
     }
 }

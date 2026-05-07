@@ -25,10 +25,13 @@
             for the test-only DatabasePath override.
         Microsoft.Extensions.Logging.Abstractions    ILogger<T> for the
             schema initializer's diagnostic trail.
-      Application / Domain / Domain.Services must NOT reference any of
-      these packages; LayeringTests asserts that boundary. Dapper itself
-      is deliberately deferred until the first Aggregate Repository
-      lands; S5 uses raw DbCommand.ExecuteScalarAsync for the smoke path.
+    Application / Domain / Domain.Services must NOT reference any of
+    these packages; LayeringTests asserts that boundary.
+
+    ADR-036 aligns Infrastructure repository style with the dawning
+    gateway stack by introducing Dawning.ORM.Dapper (attribute-mapped
+    persistence entities + ORM extension methods). The package remains
+    Infrastructure-only.
     -->
     <ItemGroup>
         <PackageVersion
@@ -37,6 +40,7 @@
         />
         <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
         <PackageVersion Include="Dapper" Version="2.1.66" />
+        <PackageVersion Include="Dawning.ORM.Dapper" Version="1.3.0" />
         <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
         <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.0" />
         <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.0" />

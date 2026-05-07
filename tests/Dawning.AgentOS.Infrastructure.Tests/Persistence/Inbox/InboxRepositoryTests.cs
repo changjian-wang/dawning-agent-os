@@ -11,7 +11,8 @@ namespace Dawning.AgentOS.Infrastructure.Tests.Persistence.Inbox;
 
 /// <summary>
 /// Tests for <see cref="InboxRepository"/>. Per ADR-026 §5 the V0
-/// repository is a thin Dapper layer over <see cref="IDbConnectionFactory"/>;
+/// repository uses Dawning.ORM.Dapper over
+/// <see cref="IDbConnectionFactory"/>;
 /// these tests run against a shared in-memory SQLite store with the
 /// schema bootstrap applied via <see cref="SqliteSchemaInitializer"/>
 /// (so the suite also exercises migration <c>0002_create_inbox_items.sql</c>
@@ -188,11 +189,6 @@ public sealed class InboxRepositoryTests
 
     private static async Task ApplySchemaAsync(IDbConnectionFactory factory)
     {
-        // Dapper auto-mapping is enabled inside AddInfrastructure(); the
-        // tests must opt in explicitly because they construct repositories
-        // by hand without hitting the DI extension.
-        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
-
         var initializer = new SqliteSchemaInitializer(
             factory,
             NullLogger<SqliteSchemaInitializer>.Instance
