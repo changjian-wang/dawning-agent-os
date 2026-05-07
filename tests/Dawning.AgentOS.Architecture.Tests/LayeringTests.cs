@@ -914,6 +914,225 @@ public sealed class LayeringTests
         });
     }
 
+    [Test]
+    public void IChatMemoryRetriever_OnlyConsumedByChatAppService()
+    {
+        // Per ADR-038 §决策 H1 the chat-memory retrieval port is an
+        // *internal* Application-layer facade: it must not surface on
+        // the IChatAppService contract (which the API layer consumes)
+        // and no Api-layer type may bind to it directly. Within the
+        // Application assembly the only authored consumer is
+        // ChatAppService — orchestrators co-located in Application/
+        // services may grow over time, but each new consumer must come
+        // with its own ADR amendment, so we pin the singleton.
+        var portFullName = typeof(global::Dawning.AgentOS.Application.Interfaces.IChatMemoryRetriever).FullName!;
+
+        // 1) Application assembly: only ChatAppService and the
+        //    ChatMemoryRetriever default impl may depend on the port.
+        var applicationConsumers = Types
+            .InAssembly(Application)
+            .That()
+            .HaveDependencyOn(portFullName)
+            .GetTypes()
+            .Where(IsAuthoredType)
+            .Select(t => t.FullName ?? t.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToArray();
+
+        var allowedApplicationConsumers = new[]
+        {
+            // Composition root for the Application layer — registers
+            // the port → impl mapping in AddApplication(). This is
+            // explicitly allowed by ADR-023 §5 (Application hosts the
+            // composition extension and may bind to MEDI Abstractions).
+            "Dawning.AgentOS.Application.DependencyInjection.ApplicationServiceCollectionExtensions",
+            "Dawning.AgentOS.Application.Services.ChatAppService",
+            "Dawning.AgentOS.Application.Services.ChatMemoryRetriever",
+        };
+
+        // 2) Api assembly: zero consumers. The port must never reach
+        //    the composition root surface.
+        var apiConsumers = Types
+            .InAssembly(Api)
+            .That()
+            .HaveDependencyOn(portFullName)
+            .GetTypes()
+            .Where(IsAuthoredType)
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+
+        // 3) IChatAppService facade interface itself must not surface
+        //    the port in any of its method signatures (ADR-038 §决策
+        //    H1 "API 不暴露"). Reflection over MethodInfo catches both
+        //    parameter types and return types, including generic args.
+        var facade = typeof(global::Dawning.AgentOS.Application.Interfaces.IChatAppService);
+        var facadeLeaks = new List<string>();
+        foreach (var method in facade.GetMethods())
+        {
+            var typesInSignature = new List<Type> { method.ReturnType };
+            typesInSignature.AddRange(method.GetParameters().Select(p => p.ParameterType));
+
+            var flattened = new List<Type>();
+            void Flatten(Type t)
+            {
+                flattened.Add(t);
+                if (t.IsGenericType)
+                {
+                    foreach (var arg in t.GetGenericArguments())
+                    {
+                        Flatten(arg);
+                    }
+                }
+            }
+            foreach (var t in typesInSignature)
+            {
+                Flatten(t);
+            }
+
+            if (flattened.Any(t => t.FullName == portFullName))
+            {
+                facadeLeaks.Add(method.Name);
+            }
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                applicationConsumers,
+                Is.EqualTo(allowedApplicationConsumers),
+                "Per ADR-038 §决策 H1 only ChatAppService and ChatMemoryRetriever may depend on IChatMemoryRetriever inside the Application assembly."
+            );
+            Assert.That(
+                apiConsumers,
+                Is.Empty,
+                "Per ADR-038 §决策 H1 the Api layer must not depend on IChatMemoryRetriever (it is an internal Application facade)."
+            );
+            Assert.That(
+                facadeLeaks,
+                Is.Empty,
+                "Per ADR-038 §决策 H1 IChatAppService must not surface IChatMemoryRetriever in any method signature."
+            );
+        });
+    }
+
+    [Test]
+    public void ChatMemoryRetriever_LivesInApplicationServicesNamespace()
+    {
+        // Per ADR-038 §决策 H1 the default implementation co-locates
+        // with other AppServices: Dawning.AgentOS.Application.Services.
+        // A regression that, e.g., dropped the impl into Infrastructure
+        // (to "give it logger / repo access") would invert the
+        // dependency direction and is caught here before the build.
+        var implType = typeof(global::Dawning.AgentOS.Application.Services.ChatMemoryRetriever);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                implType.Namespace,
+                Is.EqualTo("Dawning.AgentOS.Application.Services"),
+                "ChatMemoryRetriever must live under Dawning.AgentOS.Application.Services per ADR-038 §决策 H1."
+            );
+            Assert.That(
+                implType.Assembly,
+                Is.EqualTo(Application),
+                "ChatMemoryRetriever must ship in the Dawning.AgentOS.Application assembly."
+            );
+        });
+    }
+
+    [Test]
+    public void SearchByKeywordsAsync_LivesInDomainMemoryRepositoryPort()
+    {
+        // Per ADR-038 §决策 A1 / H1 the keyword search method must
+        // hang on the existing IMemoryLedgerRepository port (Domain
+        // layer) — NOT a parallel "IMemorySearchRepository" or similar.
+        // This guards against a future refactor that splits read /
+        // write concerns by accident, which would silently bypass the
+        // ChatMemoryRetriever consumer and leave the orchestrator
+        // looking at a stale port.
+        var port = typeof(global::Dawning.AgentOS.Domain.Memory.IMemoryLedgerRepository);
+        var method = port.GetMethod("SearchByKeywordsAsync");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                method,
+                Is.Not.Null,
+                "IMemoryLedgerRepository must declare SearchByKeywordsAsync per ADR-038 §决策 A1."
+            );
+            Assert.That(
+                port.Namespace,
+                Is.EqualTo("Dawning.AgentOS.Domain.Memory"),
+                "IMemoryLedgerRepository must live under Dawning.AgentOS.Domain.Memory."
+            );
+            Assert.That(
+                port.Assembly,
+                Is.EqualTo(Domain),
+                "IMemoryLedgerRepository must ship in the Dawning.AgentOS.Domain assembly."
+            );
+        });
+    }
+
+    [Test]
+    public void LlmStreamChunkKind_HasMemoryAnnotationValue()
+    {
+        // Per ADR-038 §决策 D2 the SSE side-channel relies on
+        // LlmStreamChunkKind.MemoryAnnotation. Per ADR-037 §D the
+        // enum lives in Dawning.AgentOS.Abstractions.Llm so both
+        // Application orchestrators and Api SSE writer can bind to
+        // the same wire type without crossing layers. A regression
+        // that moves the enum or drops the value would silently
+        // break the chat → memory hint pipeline; this test makes the
+        // failure surface at compile time of the architecture suite.
+        var enumType = typeof(global::Dawning.AgentOS.Abstractions.Llm.LlmStreamChunkKind);
+        var values = Enum.GetNames(enumType);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                enumType.Namespace,
+                Is.EqualTo("Dawning.AgentOS.Abstractions.Llm"),
+                "LlmStreamChunkKind must live under Dawning.AgentOS.Abstractions.Llm per ADR-037 §D."
+            );
+            Assert.That(
+                enumType.Assembly,
+                Is.EqualTo(Abstractions),
+                "LlmStreamChunkKind must ship in the Dawning.AgentOS.Abstractions assembly."
+            );
+            Assert.That(
+                values,
+                Does.Contain("MemoryAnnotation"),
+                "LlmStreamChunkKind must declare a MemoryAnnotation value per ADR-038 §决策 D2."
+            );
+        });
+    }
+
+    [Test]
+    public void ChatAppService_DependsOnIChatMemoryRetriever()
+    {
+        // Per ADR-038 §决策 H1 the ChatAppService primary constructor
+        // takes IChatMemoryRetriever as a dependency so the
+        // orchestrator can inject the retrieved entries into the
+        // system prompt before delegating to the LLM provider.
+        // Removing the parameter would silently rewire the orchestrator
+        // back to ADR-032's pre-memory pipeline; pinning the
+        // constructor parameter list makes that regression a build
+        // break.
+        var serviceType = typeof(global::Dawning.AgentOS.Application.Services.ChatAppService);
+        var portType = typeof(global::Dawning.AgentOS.Application.Interfaces.IChatMemoryRetriever);
+
+        var ctors = serviceType.GetConstructors();
+        var ctorBindsToPort = ctors.Any(c =>
+            c.GetParameters().Any(p => p.ParameterType == portType)
+        );
+
+        Assert.That(
+            ctorBindsToPort,
+            Is.True,
+            "ChatAppService must accept IChatMemoryRetriever in its constructor per ADR-038 §决策 H1."
+        );
+    }
+
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>
         assembly
             .GetReferencedAssemblies()
