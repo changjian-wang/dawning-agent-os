@@ -44,3 +44,10 @@ agent 解读（参 ADR-030 §背景 + ADR-031 §背景 + ADR-034）：
 - Summary/Tags 是 ADR-014 四步骤 pipeline 的中间积木，下游消费（classify / curation options / 兴趣画像 ADR-013）都未建
 - Save 把 inbox 项晋升为 memory，但 chat 不读 memory（路径 β 要补的根因），所以晋升后无回报
 - 我判断 Save 该不该存在，要在路径 β 闭环建起来后用数据回答，不是现在
+
+## 信号 10：会话切换器形态质疑（UI 收敛素材，非 ADR-038 范围）
+
+- 当前顶部 pill tab → 倾向左侧 drawer
+- 与原生 chat 产品（Claude/ChatGPT/Cursor）形态一致
+- 配合信号 1（空会话删不掉），drawer hover 删除是自然解
+- 留待 ADR-035 收敛 ADR 中处理
