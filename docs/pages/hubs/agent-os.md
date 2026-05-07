@@ -7,8 +7,8 @@ summary: dawning-agent-os wiki 的 root hub，承载主题分区与阅读起点�
 tags: [agent, meta]
 sources: []
 created: 2026-04-27
-updated: 2026-05-06
-verified_at: 2026-05-06
+updated: 2026-05-07
+verified_at: 2026-05-07
 freshness: evergreen
 status: active
 archived_reason: ""
@@ -76,6 +76,7 @@ part_of: []
 - [ADR-035 桌面 MVP UX 主叙事：暂停按钮累加，dogfood ≥ 7 天后从 4 候选方向收敛](../adrs/desktop-mvp-ux-thesis-via-dogfood.md)
 - [ADR-036 持久化仓储风格统一：Infrastructure Repository 采用 Dawning.ORM.Dapper](../adrs/persistence-repository-style-dawning-orm-dapper.md)
 - [ADR-037 端口与跨层契约程序集划分：Domain Event 进 Domain.Core，其余技术契约进 Dawning.AgentOS.Abstractions](../adrs/port-and-cross-layer-contract-assembly-split.md)
+- [ADR-038 chat 上下文注入 memory MVP：朴素关键词检索 + system prompt 末尾注入 + 一行小字回报](../adrs/chat-context-memory-injection-v0.md)
 
 已落地规则：
 
