@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -96,7 +97,7 @@ public sealed partial class SqliteSchemaInitializer(
     }
 
     private static async Task<HashSet<long>> ReadAppliedVersionsAsync(
-        System.Data.Common.DbConnection connection,
+        DbConnection connection,
         CancellationToken cancellationToken
     )
     {
@@ -160,7 +161,7 @@ public sealed partial class SqliteSchemaInitializer(
     }
 
     private static async Task ApplyMigrationAsync(
-        System.Data.Common.DbConnection connection,
+        DbConnection connection,
         DiscoveredMigration migration,
         CancellationToken cancellationToken
     )
