@@ -90,4 +90,43 @@ public interface IMemoryLedgerRepository
         bool includeSoftDeleted,
         CancellationToken cancellationToken
     );
+
+    /// <summary>
+    /// Per ADR-038 §决策 A1 returns up to <paramref name="limit"/>
+    /// <see cref="MemoryStatus.Active"/> entries whose
+    /// <see cref="MemoryLedgerEntry.Content"/> contains any of the
+    /// supplied <paramref name="keywords"/> (case-insensitive substring
+    /// match — naive keyword retrieval, no embeddings, no FTS).
+    /// </summary>
+    /// <param name="keywords">
+    /// Pre-tokenized keywords (each is a substring to test against
+    /// <see cref="MemoryLedgerEntry.Content"/>). When the list is
+    /// empty implementations must return an empty result without
+    /// touching the database — an empty <c>OR</c>-chain would otherwise
+    /// degrade to "match everything".
+    /// </param>
+    /// <param name="limit">
+    /// Per ADR-038 §决策 C1 the application layer caps this at 5.
+    /// Implementations may over-fetch internally to allow hit-count
+    /// re-ranking but must respect this final return cap.
+    /// </param>
+    /// <param name="cancellationToken">Standard cancellation token.</param>
+    /// <returns>
+    /// Per ADR-038 §决策 A1 the rows are ordered by
+    /// hit-count DESC, then <c>updated_at_utc DESC</c>, then
+    /// <c>id DESC</c>. Hit-count ties (e.g. when only one keyword is
+    /// supplied) collapse the ordering to the secondary keys.
+    /// </returns>
+    /// <remarks>
+    /// Per ADR-038 §决策 E1 only <see cref="MemoryStatus.Active"/>
+    /// rows are eligible; <c>Corrected / Archived / SoftDeleted</c>
+    /// rows are filtered out by the implementation, not by the caller,
+    /// so future status additions can be opted-in centrally without
+    /// touching <see cref="ChatMemoryRetriever"/>-style consumers.
+    /// </remarks>
+    Task<IReadOnlyList<MemoryLedgerEntry>> SearchByKeywordsAsync(
+        IReadOnlyList<string> keywords,
+        int limit,
+        CancellationToken cancellationToken
+    );
 }

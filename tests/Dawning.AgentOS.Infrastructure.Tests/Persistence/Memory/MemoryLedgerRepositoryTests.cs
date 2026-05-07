@@ -282,6 +282,207 @@ public sealed class MemoryLedgerRepositoryTests
         );
     }
 
+    // ---------- ADR-038 §决策 A1: keyword search ----------
+
+    [Test]
+    public async Task SearchByKeywordsAsync_ReturnsActiveRowsMatchingAnyKeyword()
+    {
+        await using var keepAlive = OpenSharedInMemoryConnection();
+        var factory = CreateFactoryFor(keepAlive);
+        await ApplySchemaAsync(factory);
+
+        var sut = new MemoryLedgerRepository(factory);
+        await sut.AddAsync(NewEntry("loves green tea", SampleNow), CancellationToken.None);
+        await sut.AddAsync(NewEntry("prefers black coffee", SampleNow), CancellationToken.None);
+        await sut.AddAsync(NewEntry("has a dog named Apollo", SampleNow), CancellationToken.None);
+
+        var hits = await sut.SearchByKeywordsAsync(
+            new[] { "tea", "coffee" },
+            limit: 5,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Has.Count.EqualTo(2));
+        Assert.That(
+            hits.Select(h => h.Content),
+            Is.EquivalentTo(new[] { "loves green tea", "prefers black coffee" })
+        );
+    }
+
+    [Test]
+    public async Task SearchByKeywordsAsync_ExcludesNonActiveStatuses()
+    {
+        await using var keepAlive = OpenSharedInMemoryConnection();
+        var factory = CreateFactoryFor(keepAlive);
+        await ApplySchemaAsync(factory);
+
+        var sut = new MemoryLedgerRepository(factory);
+
+        var alive = NewEntry("active tea note", SampleNow);
+        var corrected = NewEntry("corrected tea note", SampleNow.AddMinutes(-1));
+        corrected.MarkCorrected(SampleNow);
+        var archived = NewEntry("archived tea note", SampleNow.AddMinutes(-2));
+        archived.Archive(SampleNow);
+        var deleted = NewEntry("deleted tea note", SampleNow.AddMinutes(-3));
+        deleted.SoftDelete(SampleNow);
+
+        await sut.AddAsync(alive, CancellationToken.None);
+        await sut.AddAsync(corrected, CancellationToken.None);
+        await sut.AddAsync(archived, CancellationToken.None);
+        await sut.AddAsync(deleted, CancellationToken.None);
+
+        var hits = await sut.SearchByKeywordsAsync(
+            new[] { "tea" },
+            limit: 10,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Has.Count.EqualTo(1));
+        Assert.That(hits[0].Content, Is.EqualTo("active tea note"));
+        Assert.That(hits[0].Status, Is.EqualTo(MemoryStatus.Active));
+    }
+
+    [Test]
+    public async Task SearchByKeywordsAsync_RanksByHitCountDesc_BeforeUpdatedAt()
+    {
+        await using var keepAlive = OpenSharedInMemoryConnection();
+        var factory = CreateFactoryFor(keepAlive);
+        await ApplySchemaAsync(factory);
+
+        var sut = new MemoryLedgerRepository(factory);
+
+        // The two-hit row is OLDER than the one-hit row, so
+        // (updated_at DESC, id DESC) alone would surface the wrong row.
+        // Hit-count must trump recency.
+        var oneHitRecent = NewEntry("only mentions tea", SampleNow);
+        var twoHitOlder = NewEntry(
+            "mentions tea AND coffee together",
+            SampleNow.AddMinutes(-30)
+        );
+
+        await sut.AddAsync(oneHitRecent, CancellationToken.None);
+        await sut.AddAsync(twoHitOlder, CancellationToken.None);
+
+        var hits = await sut.SearchByKeywordsAsync(
+            new[] { "tea", "coffee" },
+            limit: 5,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Has.Count.EqualTo(2));
+        Assert.That(hits[0].Content, Is.EqualTo("mentions tea AND coffee together"));
+        Assert.That(hits[1].Content, Is.EqualTo("only mentions tea"));
+    }
+
+    [Test]
+    public async Task SearchByKeywordsAsync_TieBreaks_OnUpdatedAtDescThenIdDesc()
+    {
+        await using var keepAlive = OpenSharedInMemoryConnection();
+        var factory = CreateFactoryFor(keepAlive);
+        await ApplySchemaAsync(factory);
+
+        var sut = new MemoryLedgerRepository(factory);
+
+        var older = NewEntry("tea note older", SampleNow.AddMinutes(-10));
+        var newer = NewEntry("tea note newer", SampleNow);
+        await sut.AddAsync(older, CancellationToken.None);
+        await sut.AddAsync(newer, CancellationToken.None);
+
+        var hits = await sut.SearchByKeywordsAsync(
+            new[] { "tea" },
+            limit: 5,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Has.Count.EqualTo(2));
+        Assert.That(hits[0].Content, Is.EqualTo("tea note newer"));
+        Assert.That(hits[1].Content, Is.EqualTo("tea note older"));
+    }
+
+    [Test]
+    public async Task SearchByKeywordsAsync_RespectsLimitCap()
+    {
+        await using var keepAlive = OpenSharedInMemoryConnection();
+        var factory = CreateFactoryFor(keepAlive);
+        await ApplySchemaAsync(factory);
+
+        var sut = new MemoryLedgerRepository(factory);
+        for (var i = 0; i < 8; i++)
+        {
+            await sut.AddAsync(
+                NewEntry($"tea entry {i}", SampleNow.AddMinutes(-i)),
+                CancellationToken.None
+            );
+        }
+
+        var hits = await sut.SearchByKeywordsAsync(
+            new[] { "tea" },
+            limit: 3,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Has.Count.EqualTo(3));
+        // Most recent three by tie-breaker.
+        Assert.That(hits[0].Content, Is.EqualTo("tea entry 0"));
+        Assert.That(hits[1].Content, Is.EqualTo("tea entry 1"));
+        Assert.That(hits[2].Content, Is.EqualTo("tea entry 2"));
+    }
+
+    [Test]
+    public async Task SearchByKeywordsAsync_EmptyKeywordList_ReturnsEmpty_WithoutDbHit()
+    {
+        // Per ADR-038 §决策 A1 the empty case must short-circuit before
+        // touching the DB — an empty OR-chain would degrade to "match
+        // everything". A strict-mode connection factory mock asserts no
+        // connection is opened.
+        var strictFactory = new Mock<IDbConnectionFactory>(MockBehavior.Strict);
+        var sut = new MemoryLedgerRepository(strictFactory.Object);
+
+        var hits = await sut.SearchByKeywordsAsync(
+            Array.Empty<string>(),
+            limit: 5,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Is.Empty);
+        strictFactory.Verify(
+            f => f.OpenAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Test]
+    public async Task SearchByKeywordsAsync_NonPositiveLimit_ReturnsEmpty_WithoutDbHit()
+    {
+        var strictFactory = new Mock<IDbConnectionFactory>(MockBehavior.Strict);
+        var sut = new MemoryLedgerRepository(strictFactory.Object);
+
+        var hits = await sut.SearchByKeywordsAsync(
+            new[] { "tea" },
+            limit: 0,
+            CancellationToken.None
+        );
+
+        Assert.That(hits, Is.Empty);
+        strictFactory.Verify(
+            f => f.OpenAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Test]
+    public void SearchByKeywordsAsync_ThrowsWhenKeywordsIsNull()
+    {
+        var factory = new Mock<IDbConnectionFactory>(MockBehavior.Strict).Object;
+        var sut = new MemoryLedgerRepository(factory);
+
+        Assert.That(
+            async () =>
+                await sut.SearchByKeywordsAsync(null!, limit: 5, CancellationToken.None),
+            Throws.TypeOf<ArgumentNullException>().With.Property("ParamName").EqualTo("keywords")
+        );
+    }
+
     private static MemoryLedgerEntry NewEntry(
         string content,
         DateTimeOffset at,

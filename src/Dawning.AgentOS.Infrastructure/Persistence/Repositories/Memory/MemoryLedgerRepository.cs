@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Memory;
 using Dawning.AgentOS.Infrastructure.Persistence.Entities.Memory;
@@ -156,6 +157,130 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
             )
             .CountAsync()
             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<MemoryLedgerEntry>> SearchByKeywordsAsync(
+        IReadOnlyList<string> keywords,
+        int limit,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(keywords);
+
+        if (limit <= 0 || keywords.Count == 0)
+        {
+            // Per ADR-038 §决策 A1 an empty keyword list must short-circuit:
+            // an empty OR-chain would otherwise degrade to "match
+            // everything" and silently inject the entire active ledger.
+            return Array.Empty<MemoryLedgerEntry>();
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await using var connection = await _connectionFactory
+            .OpenAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        const int activeStatus = (int)MemoryStatus.Active;
+        var orPredicate = BuildContainsOrPredicate(keywords);
+
+        // Per ADR-038 §决策 A1 the ranking is hit-count DESC, then
+        // updated_at_utc DESC, then id DESC. The ORM SQL adapter only
+        // accepts column references in OrderBy (no arbitrary CASE WHEN),
+        // so we order on the secondary keys at the SQL layer, over-fetch
+        // by 4× and re-rank by hit-count in memory. The 4× cushion keeps
+        // the top-N deterministic for typical 1–3 keyword queries; once
+        // we adopt FTS or embeddings the over-fetch goes away.
+        var fetchSize = checked(limit * 4);
+        var entities = await connection
+            .Builder<MemoryEntryEntity>()
+            .Where(x => x.Status == activeStatus)
+            .Where(orPredicate)
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Take(fetchSize)
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        // Stable secondary ordering is preserved because Enumerable.OrderBy
+        // is documented as a stable sort — entities already arrive sorted
+        // by (UpdatedAtUtc DESC, Id DESC).
+        var ranked = entities
+            .OrderByDescending(e => CountHits(e.Content, keywords))
+            .Take(limit)
+            .Select(MapEntity)
+            .ToList();
+
+        return ranked;
+    }
+
+    /// <summary>
+    /// Builds an OR-of-Contains predicate over
+    /// <see cref="MemoryEntryEntity.Content"/> for the supplied
+    /// <paramref name="keywords"/>. The expression tree composes to
+    /// <c>x =&gt; x.Content.Contains(k0) || x.Content.Contains(k1) || ...</c>;
+    /// <c>Dawning.ORM.Dapper</c>'s expression visitor translates each
+    /// <see cref="string.Contains(string)"/> call to <c>LIKE '%k%'</c>
+    /// and chains them with SQL <c>OR</c> via
+    /// <see cref="ExpressionType.OrElse"/>.
+    /// </summary>
+    /// <remarks>
+    /// The caller has already enforced <c>keywords.Count &gt; 0</c>;
+    /// this method intentionally does not handle the empty case so a
+    /// degenerate "match everything" predicate cannot escape.
+    /// </remarks>
+    private static Expression<Func<MemoryEntryEntity, bool>> BuildContainsOrPredicate(
+        IReadOnlyList<string> keywords
+    )
+    {
+        var param = Expression.Parameter(typeof(MemoryEntryEntity), "x");
+        var contentProp = Expression.Property(
+            param,
+            nameof(MemoryEntryEntity.Content)
+        );
+        var containsMethod = typeof(string).GetMethod(
+            nameof(string.Contains),
+            new[] { typeof(string) }
+        )!;
+
+        Expression body = Expression.Call(
+            contentProp,
+            containsMethod,
+            Expression.Constant(keywords[0], typeof(string))
+        );
+        for (var i = 1; i < keywords.Count; i++)
+        {
+            var contains = Expression.Call(
+                contentProp,
+                containsMethod,
+                Expression.Constant(keywords[i], typeof(string))
+            );
+            body = Expression.OrElse(body, contains);
+        }
+
+        return Expression.Lambda<Func<MemoryEntryEntity, bool>>(body, param);
+    }
+
+    /// <summary>
+    /// Counts how many of the supplied <paramref name="keywords"/>
+    /// appear in <paramref name="content"/>. Uses
+    /// <see cref="StringComparison.OrdinalIgnoreCase"/> to match the
+    /// default ASCII-case-insensitive semantics of <c>LIKE</c> on both
+    /// SQLite (V0 dogfood) and MySQL (ADR-033 prod target with the
+    /// default <c>utf8mb4</c> CI collation).
+    /// </summary>
+    private static int CountHits(string content, IReadOnlyList<string> keywords)
+    {
+        var count = 0;
+        for (var i = 0; i < keywords.Count; i++)
+        {
+            if (content.Contains(keywords[i], StringComparison.OrdinalIgnoreCase))
+            {
+                count++;
+            }
+        }
+        return count;
     }
 
     /// <summary>
