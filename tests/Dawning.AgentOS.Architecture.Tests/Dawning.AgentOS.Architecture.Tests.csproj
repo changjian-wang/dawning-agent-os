@@ -32,6 +32,7 @@
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+        <ProjectReference Include="..\..\src\Dawning.AgentOS.Infrastructure\Dawning.AgentOS.Infrastructure.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Api\Dawning.AgentOS.Api.csproj" />
     </ItemGroup>
 </Project>

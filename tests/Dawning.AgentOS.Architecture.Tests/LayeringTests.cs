@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using NetArchTest.Rules;
 using NUnit.Framework;
 
@@ -72,6 +73,9 @@ public sealed class LayeringTests
 
     private static readonly Assembly Application =
         typeof(global::Dawning.AgentOS.Application.Interfaces.IRuntimeAppService).Assembly;
+
+    private static readonly Assembly Infrastructure =
+        typeof(global::Dawning.AgentOS.Infrastructure.Persistence.SqliteConnectionFactory).Assembly;
 
     private static readonly Assembly Api =
         typeof(global::Dawning.AgentOS.Api.Endpoints.Runtime.RuntimeEndpoints).Assembly;
@@ -563,11 +567,137 @@ public sealed class LayeringTests
         });
     }
 
+    [Test]
+    public void PersistenceEntities_LayoutIsLockedDown()
+    {
+        // Per ADR-036 + the persistence-repository-conventions rule the
+        // layout is bidirectional:
+        //   1. Every type under Persistence.Entities.{aggregate}/ must
+        //      carry [Dawning.ORM.Dapper.Table] (i.e., it is a PO).
+        //   2. Every type with that attribute in the Infrastructure
+        //      assembly must live under Persistence.Entities.*.
+        // Asserting both directions catches drift in either direction:
+        // a non-PO file accidentally placed under Entities/, or a PO
+        // file dropped into the legacy {Chat,Inbox,Memory}/ folders.
+        const string EntitiesNamespacePrefix =
+            "Dawning.AgentOS.Infrastructure.Persistence.Entities.";
+
+        var allTypes = Infrastructure.GetTypes().Where(IsAuthoredType).ToArray();
+
+        var entitiesWithoutTable = allTypes
+            .Where(t =>
+                t.Namespace is not null
+                && t.Namespace.StartsWith(EntitiesNamespacePrefix, StringComparison.Ordinal)
+            )
+            .Where(t => t.GetCustomAttribute<global::Dawning.ORM.Dapper.TableAttribute>() is null)
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+
+        var taggedOutsideEntities = allTypes
+            .Where(t =>
+                t.GetCustomAttribute<global::Dawning.ORM.Dapper.TableAttribute>() is not null
+            )
+            .Where(t =>
+                t.Namespace is null
+                || !t.Namespace.StartsWith(EntitiesNamespacePrefix, StringComparison.Ordinal)
+            )
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                entitiesWithoutTable,
+                Is.Empty,
+                "Types under Persistence.Entities.* must carry [Dawning.ORM.Dapper.Table] (ADR-036)."
+            );
+            Assert.That(
+                taggedOutsideEntities,
+                Is.Empty,
+                "Types with [Dawning.ORM.Dapper.Table] must live under Persistence.Entities.* (ADR-036)."
+            );
+        });
+    }
+
+    [Test]
+    public void PersistenceRepositories_LayoutIsLockedDown()
+    {
+        // Per ADR-036 + the persistence-repository-conventions rule:
+        //   1. Every concrete class under Persistence.Repositories.* must
+        //      implement at least one Domain-side I*Repository interface.
+        //   2. Every concrete class in the Infrastructure assembly that
+        //      implements such an interface must live under
+        //      Persistence.Repositories.*.
+        // Direction (2) is the load-bearing one: it forbids a regressed
+        // sibling like InboxRepository.cs reappearing under
+        // Persistence/Inbox/ instead of Persistence/Repositories/Inbox/.
+        const string RepositoriesNamespacePrefix =
+            "Dawning.AgentOS.Infrastructure.Persistence.Repositories.";
+        const string DomainNamespacePrefix = "Dawning.AgentOS.Domain.";
+
+        static bool IsDomainRepositoryInterface(Type i) =>
+            i.IsInterface
+            && i.Namespace is { } ns
+            && ns.StartsWith(DomainNamespacePrefix, StringComparison.Ordinal)
+            && i.Name.EndsWith("Repository", StringComparison.Ordinal);
+
+        var allTypes = Infrastructure.GetTypes().Where(IsAuthoredType).ToArray();
+
+        var repositoriesWithoutInterface = allTypes
+            .Where(t =>
+                t.IsClass
+                && !t.IsAbstract
+                && t.Namespace is not null
+                && t.Namespace.StartsWith(RepositoriesNamespacePrefix, StringComparison.Ordinal)
+            )
+            .Where(t => !t.GetInterfaces().Any(IsDomainRepositoryInterface))
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+
+        var repositoriesOutsidePath = allTypes
+            .Where(t =>
+                t.IsClass && !t.IsAbstract && t.GetInterfaces().Any(IsDomainRepositoryInterface)
+            )
+            .Where(t =>
+                t.Namespace is null
+                || !t.Namespace.StartsWith(RepositoriesNamespacePrefix, StringComparison.Ordinal)
+            )
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                repositoriesWithoutInterface,
+                Is.Empty,
+                "Types under Persistence.Repositories.* must implement a Domain.*.I*Repository interface (ADR-036)."
+            );
+            Assert.That(
+                repositoriesOutsidePath,
+                Is.Empty,
+                "Concrete Domain.*.I*Repository implementations must live under Persistence.Repositories.* (ADR-036)."
+            );
+        });
+    }
+
     private static HashSet<string> ReferencedAssemblyNames(Assembly assembly) =>
         assembly
             .GetReferencedAssemblies()
             .Select(n => n.Name ?? string.Empty)
             .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Filter that excludes compiler-generated infrastructure (async
+    /// state machines, lambda display classes, anonymous types) from
+    /// reflection-based architecture assertions. These show up as
+    /// nested types named like <c>&lt;&gt;c</c> or
+    /// <c>&lt;Method&gt;d__N</c> and would otherwise pollute the
+    /// "all types under namespace X" enumerations with noise that has
+    /// nothing to do with the layout rule being asserted.
+    /// </summary>
+    private static bool IsAuthoredType(Type type) =>
+        type.GetCustomAttribute<CompilerGeneratedAttribute>() is null
+        && !type.Name.Contains('<', StringComparison.Ordinal);
 
     private static string FormatFailures(TestResult result)
     {
