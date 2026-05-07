@@ -1,8 +1,10 @@
 using Dawning.AgentOS.Abstractions;
 using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Chat;
+using Dawning.AgentOS.Application.Interfaces;
 using Dawning.AgentOS.Application.Services;
 using Dawning.AgentOS.Domain.Chat;
+using Dawning.AgentOS.Domain.Memory;
 using Moq;
 using NUnit.Framework;
 
@@ -51,8 +53,9 @@ public sealed class ChatAppServiceTests
             .Callback<ChatSession, CancellationToken>((session, _) => captured = session)
             .Returns(Task.CompletedTask);
         var llm = new Mock<ILlmProvider>(MockBehavior.Strict);
+        var retriever = new Mock<IChatMemoryRetriever>(MockBehavior.Strict);
 
-        var sut = new ChatAppService(clock.Object, repo.Object, llm.Object);
+        var sut = new ChatAppService(clock.Object, repo.Object, llm.Object, retriever.Object);
 
         var result = await sut.CreateSessionAsync(CancellationToken.None);
 
@@ -395,7 +398,272 @@ public sealed class ChatAppServiceTests
         clock.SetupGet(c => c.UtcNow).Returns(SampleNow);
         repository = new Mock<IChatSessionRepository>();
         llm = new Mock<ILlmProvider>();
-        return new ChatAppService(clock.Object, repository.Object, llm.Object);
+        var retriever = new Mock<IChatMemoryRetriever>();
+        // Default — no memory cited — keeps existing tests behavior
+        // unchanged. Tests that exercise injection use the dedicated
+        // BuildSutWithRetriever overload.
+        retriever
+            .Setup(r => r.RetrieveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<MemoryLedgerEntry>());
+        return new ChatAppService(clock.Object, repository.Object, llm.Object, retriever.Object);
+    }
+
+    [Test]
+    public async Task SendMessageStreamAsync_EmitsMemoryAnnotationChunkFirst_WhenMemoriesRetrieved()
+    {
+        var sut = BuildSutWithRetriever(
+            out var clock,
+            out var repo,
+            out var llm,
+            out var retriever
+        );
+        var session = ChatSession.Create(SampleNow);
+        clock.SetupGet(c => c.UtcNow).Returns(SampleNow);
+        repo.Setup(r => r.GetAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(session);
+        repo.Setup(r => r.LoadMessagesAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ChatMessage>());
+        repo.Setup(r => r.AddMessageAsync(It.IsAny<ChatMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        repo.Setup(r => r.UpdateAsync(It.IsAny<ChatSession>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var memory1 = NewMemory("我喜欢吃苹果");
+        var memory2 = NewMemory(new string('x', 100));
+        retriever
+            .Setup(r => r.RetrieveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([memory1, memory2]);
+
+        llm.Setup(l => l.CompleteStreamAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(
+                BuildStream(
+                    LlmStreamChunk.ForDelta("ok"),
+                    LlmStreamChunk.ForDone(
+                        "gpt-4.1",
+                        promptTokens: 1,
+                        completionTokens: 1,
+                        latency: TimeSpan.Zero
+                    )
+                )
+            );
+
+        var result = await sut.SendMessageStreamAsync(
+            session.Id,
+            new SendMessageRequest("我喜欢苹果"),
+            CancellationToken.None
+        );
+
+        Assert.That(result.IsSuccess, Is.True);
+
+        var emitted = new List<LlmStreamChunk>();
+        await foreach (var chunk in result.Value)
+        {
+            emitted.Add(chunk);
+        }
+
+        Assert.Multiple(() =>
+        {
+            // MemoryAnnotation must be the FIRST chunk (ADR-038 §决策 D2).
+            Assert.That(emitted[0].Kind, Is.EqualTo(LlmStreamChunkKind.MemoryAnnotation));
+            Assert.That(emitted[0].MemoryAnnotations, Is.Not.Null);
+            Assert.That(emitted[0].MemoryAnnotations!, Has.Count.EqualTo(2));
+            Assert.That(emitted[0].MemoryAnnotations![0].Id, Is.EqualTo(memory1.Id));
+            Assert.That(emitted[0].MemoryAnnotations![0].ContentPreview, Is.EqualTo("我喜欢吃苹果"));
+            Assert.That(emitted[0].MemoryAnnotations![1].Id, Is.EqualTo(memory2.Id));
+            // 100 chars truncated to 80 + ellipsis.
+            Assert.That(
+                emitted[0].MemoryAnnotations![1].ContentPreview,
+                Is.EqualTo(new string('x', 80) + "…")
+            );
+            Assert.That(emitted[1].Kind, Is.EqualTo(LlmStreamChunkKind.Delta));
+            Assert.That(emitted[2].Kind, Is.EqualTo(LlmStreamChunkKind.Done));
+        });
+    }
+
+    [Test]
+    public async Task SendMessageStreamAsync_DoesNotEmitMemoryAnnotation_WhenNoMemoriesRetrieved()
+    {
+        var sut = BuildSutWithRetriever(
+            out var clock,
+            out var repo,
+            out var llm,
+            out var retriever
+        );
+        var session = ChatSession.Create(SampleNow);
+        clock.SetupGet(c => c.UtcNow).Returns(SampleNow);
+        repo.Setup(r => r.GetAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(session);
+        repo.Setup(r => r.LoadMessagesAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ChatMessage>());
+        repo.Setup(r => r.AddMessageAsync(It.IsAny<ChatMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        repo.Setup(r => r.UpdateAsync(It.IsAny<ChatSession>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        retriever
+            .Setup(r => r.RetrieveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<MemoryLedgerEntry>());
+
+        llm.Setup(l => l.CompleteStreamAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(
+                BuildStream(
+                    LlmStreamChunk.ForDelta("hi"),
+                    LlmStreamChunk.ForDone(
+                        "gpt-4.1",
+                        promptTokens: 1,
+                        completionTokens: 1,
+                        latency: TimeSpan.Zero
+                    )
+                )
+            );
+
+        var result = await sut.SendMessageStreamAsync(
+            session.Id,
+            new SendMessageRequest("hi"),
+            CancellationToken.None
+        );
+
+        Assert.That(result.IsSuccess, Is.True);
+
+        var emitted = new List<LlmStreamChunk>();
+        await foreach (var chunk in result.Value)
+        {
+            emitted.Add(chunk);
+        }
+
+        Assert.That(
+            emitted.Any(c => c.Kind == LlmStreamChunkKind.MemoryAnnotation),
+            Is.False,
+            "Empty memory list ⇒ no MemoryAnnotation chunk per ADR-038 §决策 D2."
+        );
+    }
+
+    [Test]
+    public async Task SendMessageStreamAsync_AppendsMemoryTailToSystemPrompt_WhenMemoriesRetrieved()
+    {
+        var sut = BuildSutWithRetriever(
+            out var clock,
+            out var repo,
+            out var llm,
+            out var retriever
+        );
+        var session = ChatSession.Create(SampleNow);
+        clock.SetupGet(c => c.UtcNow).Returns(SampleNow);
+        repo.Setup(r => r.GetAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(session);
+        repo.Setup(r => r.LoadMessagesAsync(session.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ChatMessage>());
+        repo.Setup(r => r.AddMessageAsync(It.IsAny<ChatMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        repo.Setup(r => r.UpdateAsync(It.IsAny<ChatSession>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var memoryEntry = NewMemory("用户喜欢清淡饮食");
+        retriever
+            .Setup(r => r.RetrieveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([memoryEntry]);
+
+        LlmRequest? capturedRequest = null;
+        llm.Setup(l => l.CompleteStreamAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<LlmRequest, CancellationToken>((req, _) => capturedRequest = req)
+            .Returns(
+                BuildStream(
+                    LlmStreamChunk.ForDone(
+                        "gpt-4.1",
+                        promptTokens: 1,
+                        completionTokens: 0,
+                        latency: TimeSpan.Zero
+                    )
+                )
+            );
+
+        var result = await sut.SendMessageStreamAsync(
+            session.Id,
+            new SendMessageRequest("饮食建议"),
+            CancellationToken.None
+        );
+
+        Assert.That(result.IsSuccess, Is.True);
+        await foreach (var _ in result.Value) { }
+
+        Assert.That(capturedRequest, Is.Not.Null);
+        var systemMessages = capturedRequest!
+            .Messages.Where(m => m.Role == LlmRole.System)
+            .ToList();
+        Assert.Multiple(() =>
+        {
+            // Per ADR-038 §决策 B1 a single system message carries the
+            // memory tail, not a separate role=system entry.
+            Assert.That(systemMessages, Has.Count.EqualTo(1));
+            Assert.That(systemMessages[0].Content, Does.StartWith(ChatAppService.SystemPrompt));
+            Assert.That(
+                systemMessages[0].Content,
+                Does.Contain(ChatAppService.MemorySectionHeader)
+            );
+            Assert.That(systemMessages[0].Content, Does.Contain("用户喜欢清淡饮食"));
+        });
+    }
+
+    [Test]
+    public void BuildSystemContent_NoMemories_ReturnsBaseSystemPromptUnchanged()
+    {
+        // Per ADR-038 §决策 B1 absence of memories must yield the same
+        // single system message shape as a pre-ADR-038 chat call so
+        // existing provider plumbing keeps working.
+        var content = ChatAppService.BuildSystemContent(Array.Empty<MemoryLedgerEntry>());
+
+        Assert.That(content, Is.EqualTo(ChatAppService.SystemPrompt));
+    }
+
+    [Test]
+    public void BuildAnnotations_TruncatesContentPreview_AtConfiguredLength()
+    {
+        var shortEntry = NewMemory("短记忆");
+        var longContent = new string('a', ChatAppService.MemoryPreviewMaxLength + 50);
+        var longEntry = NewMemory(longContent);
+
+        var items = ChatAppService.BuildAnnotations([shortEntry, longEntry]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(items, Has.Count.EqualTo(2));
+            Assert.That(items[0].Id, Is.EqualTo(shortEntry.Id));
+            Assert.That(items[0].ContentPreview, Is.EqualTo("短记忆"));
+            Assert.That(items[1].Id, Is.EqualTo(longEntry.Id));
+            Assert.That(
+                items[1].ContentPreview,
+                Is.EqualTo(
+                    new string('a', ChatAppService.MemoryPreviewMaxLength)
+                        + ChatAppService.PreviewEllipsis
+                )
+            );
+        });
+    }
+
+    private static MemoryLedgerEntry NewMemory(string content) =>
+        MemoryLedgerEntry.Create(
+            content: content,
+            scope: null,
+            source: MemorySource.UserExplicit,
+            isExplicit: true,
+            confidence: 1.0,
+            sensitivity: MemorySensitivity.Normal,
+            createdAtUtc: SampleNow
+        );
+
+    private static ChatAppService BuildSutWithRetriever(
+        out Mock<IClock> clock,
+        out Mock<IChatSessionRepository> repository,
+        out Mock<ILlmProvider> llm,
+        out Mock<IChatMemoryRetriever> retriever
+    )
+    {
+        clock = new Mock<IClock>();
+        clock.SetupGet(c => c.UtcNow).Returns(SampleNow);
+        repository = new Mock<IChatSessionRepository>();
+        llm = new Mock<ILlmProvider>();
+        retriever = new Mock<IChatMemoryRetriever>(MockBehavior.Strict);
+        return new ChatAppService(clock.Object, repository.Object, llm.Object, retriever.Object);
     }
 
     private static async IAsyncEnumerable<LlmStreamChunk> BuildStream(

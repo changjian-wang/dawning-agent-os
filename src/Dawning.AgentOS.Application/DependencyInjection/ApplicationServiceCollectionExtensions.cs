@@ -1,5 +1,6 @@
 using System.Reflection;
 using Dawning.AgentOS.Application.Interfaces;
+using Dawning.AgentOS.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dawning.AgentOS.Application.DependencyInjection;
@@ -89,6 +90,16 @@ public static class ApplicationServiceCollectionExtensions
 
             services.AddScoped(contract, matches[0]);
         }
+
+        // Per ADR-038 §决策 H1 IChatMemoryRetriever lives under
+        // Application/Interfaces/ but intentionally drops the
+        // *AppService suffix because it is an inner orchestrator
+        // collaborator (see the XML doc on IChatMemoryRetriever). The
+        // reflection scan above only matches *AppService contracts, so
+        // this collaborator gets a single explicit AddScoped here. Any
+        // future inner-only port should follow the same pattern rather
+        // than relax the scanner's suffix rule.
+        services.AddScoped<IChatMemoryRetriever, ChatMemoryRetriever>();
 
         return services;
     }

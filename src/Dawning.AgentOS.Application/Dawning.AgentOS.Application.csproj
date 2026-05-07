@@ -56,4 +56,13 @@
         <ProjectReference Include="..\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
         <ProjectReference Include="..\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
     </ItemGroup>
+
+    <!-- ChatMemoryRetriever exposes an internal static Tokenize helper
+         so unit tests in Dawning.AgentOS.Application.Tests can pin the
+         keyword tokenization rules listed in ADR-038 §可机器化判据
+         directly, without promoting that helper to the layer's public
+         surface. -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="Dawning.AgentOS.Application.Tests" />
+    </ItemGroup>
 </Project>

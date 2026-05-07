@@ -1,12 +1,15 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 using Dawning.AgentOS.Abstractions;
 using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Chat;
 using Dawning.AgentOS.Application.Interfaces;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Domain.Core;
+using Dawning.AgentOS.Domain.Memory;
 
 namespace Dawning.AgentOS.Application.Services;
 
@@ -63,7 +66,8 @@ namespace Dawning.AgentOS.Application.Services;
 public sealed class ChatAppService(
     IClock clock,
     IChatSessionRepository repository,
-    ILlmProvider llmProvider
+    ILlmProvider llmProvider,
+    IChatMemoryRetriever memoryRetriever
 ) : IChatAppService
 {
     /// <summary>Per ADR-032 §决策 G1 lower bound on the list page size.</summary>
@@ -83,17 +87,45 @@ public sealed class ChatAppService(
         + "用简洁、克制、专业的中文回答。先听清主人的需求，再给出建议；"
         + "不知道就直说不知道，不要编造事实。";
 
-    /// <summary>Per ADR-032 §决策 J1 sampling temperature; matches inbox-side defaults so the same provider config works.</summary>
+    /// <summary>
+    /// Per ADR-038 §决策 B1 the header that prefixes the long-term
+    /// memory section appended to <see cref="SystemPrompt"/> when at
+    /// least one memory entry is cited. The wording deliberately tells
+    /// the model NOT to advertise the lookup so the user does not feel
+    /// surveilled (see ADR-038 §被否决方案 B vs §决策 B1).
+    /// </summary>
+    public const string MemorySectionHeader =
+        "\n\n（你的长期记忆中以下记录可能与当前对话相关；请仅在自然相关时引用，不要主动告诉用户『我查过你的记忆』。）";
+
+    /// <summary>
+    /// Per ADR-032 §决策 J1 sampling temperature; matches inbox-side defaults so the same provider config works.
+    /// </summary>
     public const double Temperature = 0.7;
 
     /// <summary>Per ADR-032 §决策 J1 maximum completion tokens; cap is generous for V0 conversational use.</summary>
     public const int MaxTokens = 1024;
+
+    /// <summary>
+    /// Per ADR-038 §决策 D2 + §plan-first §Q4 the maximum number of
+    /// characters of memory content surfaced in a
+    /// <see cref="MemoryAnnotationItem"/>. Longer entries are
+    /// truncated and suffixed with <see cref="PreviewEllipsis"/>.
+    /// </summary>
+    public const int MemoryPreviewMaxLength = 80;
+
+    /// <summary>
+    /// Trailing marker appended to <see cref="MemoryAnnotationItem.ContentPreview"/>
+    /// when the underlying entry exceeds <see cref="MemoryPreviewMaxLength"/>.
+    /// </summary>
+    public const string PreviewEllipsis = "…";
 
     private readonly IClock _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     private readonly IChatSessionRepository _repository =
         repository ?? throw new ArgumentNullException(nameof(repository));
     private readonly ILlmProvider _llmProvider =
         llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
+    private readonly IChatMemoryRetriever _memoryRetriever =
+        memoryRetriever ?? throw new ArgumentNullException(nameof(memoryRetriever));
 
     /// <inheritdoc />
     public async Task<Result<ChatSessionDto>> CreateSessionAsync(
@@ -243,6 +275,15 @@ public sealed class ChatAppService(
             .LoadMessagesAsync(sessionId, cancellationToken)
             .ConfigureAwait(false);
 
+        // Per ADR-038 §决策 G1 the retriever runs on every send; per
+        // §F1 it never throws on infrastructure failure (returns empty
+        // list and logs a warning). We resolve memories BEFORE
+        // persisting the user turn so the system-prompt tail and the
+        // MemoryAnnotation chunk reflect what was actually injected.
+        var memories = await _memoryRetriever
+            .RetrieveAsync(request.Content, cancellationToken)
+            .ConfigureAwait(false);
+
         var capturedAt = _clock.UtcNow;
         var userMessage = ChatMessage.CreateUser(sessionId, request.Content, capturedAt);
 
@@ -263,7 +304,7 @@ public sealed class ChatAppService(
 
         await _repository.UpdateAsync(session, cancellationToken).ConfigureAwait(false);
 
-        var stream = StreamReplyAsync(session, history, userMessage, cancellationToken);
+        var stream = StreamReplyAsync(session, history, userMessage, memories, cancellationToken);
         return Result<IAsyncEnumerable<LlmStreamChunk>>.Success(stream);
     }
 
@@ -271,13 +312,24 @@ public sealed class ChatAppService(
         ChatSession session,
         IReadOnlyList<ChatMessage> historyBeforeUser,
         ChatMessage userMessage,
+        IReadOnlyList<MemoryLedgerEntry> memories,
         [EnumeratorCancellation] CancellationToken cancellationToken
     )
     {
-        var llmRequest = BuildLlmRequest(historyBeforeUser, userMessage);
+        // Per ADR-038 §决策 D2 the orchestrator emits the side-channel
+        // MemoryAnnotation chunk BEFORE the LLM stream so the renderer
+        // can render the muted hint immediately, before the first text
+        // delta arrives. Skip entirely when no memories were cited so
+        // the renderer renders nothing — "no hint" ≠ "empty hint".
+        if (memories.Count > 0)
+        {
+            yield return LlmStreamChunk.ForMemoryAnnotation(BuildAnnotations(memories));
+        }
+
+        var llmRequest = BuildLlmRequest(historyBeforeUser, userMessage, memories);
 
         var stopwatch = Stopwatch.StartNew();
-        var assistantBuffer = new System.Text.StringBuilder();
+        var assistantBuffer = new StringBuilder();
         string? finalModel = null;
         int? finalPromptTokens = null;
         int? finalCompletionTokens = null;
@@ -354,12 +406,19 @@ public sealed class ChatAppService(
 
     private static LlmRequest BuildLlmRequest(
         IReadOnlyList<ChatMessage> historyBeforeUser,
-        ChatMessage userMessage
+        ChatMessage userMessage,
+        IReadOnlyList<MemoryLedgerEntry> memories
     )
     {
+        // Per ADR-038 §决策 B1 long-term memory entries are appended to
+        // the SAME single system message rather than injected as their
+        // own role=system entry, so providers that expect at most one
+        // system turn (e.g. some chat completion APIs) keep working.
+        var systemContent = BuildSystemContent(memories);
+
         var messages = new List<LlmMessage>(historyBeforeUser.Count + 2)
         {
-            new(LlmRole.System, SystemPrompt),
+            new(LlmRole.System, systemContent),
         };
 
         foreach (var msg in historyBeforeUser)
@@ -376,6 +435,70 @@ public sealed class ChatAppService(
             MaxTokens: MaxTokens
         );
     }
+
+    /// <summary>
+    /// Per ADR-038 §决策 B1 builds the single system message that
+    /// concatenates <see cref="SystemPrompt"/> with an optional
+    /// memory tail. When <paramref name="memories"/> is empty the base
+    /// prompt is returned unchanged so the LLM call shape is
+    /// indistinguishable from a non-memory chat turn.
+    /// </summary>
+    internal static string BuildSystemContent(IReadOnlyList<MemoryLedgerEntry> memories)
+    {
+        ArgumentNullException.ThrowIfNull(memories);
+
+        if (memories.Count == 0)
+        {
+            return SystemPrompt;
+        }
+
+        var sb = new StringBuilder(SystemPrompt.Length + MemorySectionHeader.Length + 256);
+        sb.Append(SystemPrompt);
+        sb.Append(MemorySectionHeader);
+        foreach (var entry in memories)
+        {
+            sb.Append('\n');
+            sb.Append("- [");
+            sb.Append(ShortId(entry.Id));
+            sb.Append("] ");
+            sb.Append(entry.Content);
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Per ADR-038 §决策 D2 maps <paramref name="memories"/> to the
+    /// renderer-facing annotation list, truncating each entry's content
+    /// to <see cref="MemoryPreviewMaxLength"/> with a trailing
+    /// <see cref="PreviewEllipsis"/> when needed.
+    /// </summary>
+    internal static IReadOnlyList<MemoryAnnotationItem> BuildAnnotations(
+        IReadOnlyList<MemoryLedgerEntry> memories
+    )
+    {
+        ArgumentNullException.ThrowIfNull(memories);
+
+        var items = new List<MemoryAnnotationItem>(memories.Count);
+        foreach (var entry in memories)
+        {
+            items.Add(new MemoryAnnotationItem(entry.Id, BuildPreview(entry.Content)));
+        }
+
+        return items;
+    }
+
+    private static string BuildPreview(string content)
+    {
+        if (content.Length <= MemoryPreviewMaxLength)
+        {
+            return content;
+        }
+
+        return string.Concat(content.AsSpan(0, MemoryPreviewMaxLength), PreviewEllipsis);
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N", CultureInfo.InvariantCulture)[..8];
 
     private static LlmRole MapRole(ChatRole role) =>
         role switch

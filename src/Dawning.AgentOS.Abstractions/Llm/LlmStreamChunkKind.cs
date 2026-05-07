@@ -2,7 +2,9 @@ namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// Discriminator for <see cref="LlmStreamChunk"/>. Per ADR-032 §决策 F1
-/// streaming surfaces three logical events:
+/// streaming surfaces three logical events; per ADR-038 §决策 D2 a
+/// fourth bypass event is added to carry memory-injection annotations
+/// without polluting the LLM reply text:
 /// <list type="bullet">
 ///   <item>
 ///     <description>
@@ -27,6 +29,20 @@ namespace Dawning.AgentOS.Abstractions.Llm;
 ///       at most one <see cref="Error"/> chunk per stream and stops.
 ///     </description>
 ///   </item>
+///   <item>
+///     <description>
+///       <see cref="MemoryAnnotation"/> — per ADR-038 §决策 D2 a
+///       single bypass chunk emitted by <c>ChatAppService</c> (NOT by
+///       <c>ILlmProvider</c>) before any <see cref="Delta"/>, carrying
+///       the list of memory entries the orchestrator decided to inject
+///       into the system prompt. The chunk's
+///       <see cref="LlmStreamChunk.MemoryAnnotations"/> is populated;
+///       all other discriminated fields are <c>null</c> /
+///       <see cref="TimeSpan.Zero"/>. The API layer translates this
+///       into an <c>event: memory-annotation</c> SSE frame; provider
+///       implementations MUST NOT emit it.
+///     </description>
+///   </item>
 /// </list>
 /// </summary>
 public enum LlmStreamChunkKind
@@ -39,4 +55,11 @@ public enum LlmStreamChunkKind
 
     /// <summary>Mid-stream failure carrying an <c>llm.*</c> <c>DomainError</c>.</summary>
     Error = 3,
+
+    /// <summary>
+    /// Per ADR-038 §决策 D2 a side-channel chunk carrying the list of
+    /// memory entries the orchestrator injected into the system prompt.
+    /// Emitted by <c>ChatAppService</c>, never by <c>ILlmProvider</c>.
+    /// </summary>
+    MemoryAnnotation = 4,
 }
