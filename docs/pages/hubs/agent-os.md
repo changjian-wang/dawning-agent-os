@@ -80,6 +80,7 @@ part_of: []
 
 - [Rule 实现前必须方案先行](../rules/plan-first-implementation.md)
 - [Rule Git Commit 规范](../rules/git-commit-conventions.md)
+- [Rule 持久化仓储开发规范（Dawning.ORM.Dapper）](../rules/persistence-repository-conventions.md)
 
 预期的子 hub（待建）：
 
