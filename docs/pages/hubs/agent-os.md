@@ -74,6 +74,7 @@ part_of: []
 - [ADR-033 Memory Ledger V0：MemoryLedgerEntry 聚合 + SQLite 持久化 + 软删 + 显式写入端点 + Memory 视图](../adrs/memory-ledger-v0-schema-and-storage.md)
 - [ADR-034 Inbox 显式沉淀进 Memory Ledger V0：IInboxToMemoryAppService 协调器、固定 scope=inbox 与 POST /api/inbox/items/{id}/promote-to-memory 端点](../adrs/inbox-to-memory-promotion-v0.md)
 - [ADR-035 桌面 MVP UX 主叙事：暂停按钮累加，dogfood ≥ 7 天后从 4 候选方向收敛](../adrs/desktop-mvp-ux-thesis-via-dogfood.md)
+- [ADR-036 持久化仓储风格统一：Infrastructure Repository 采用 Dawning.ORM.Dapper](../adrs/persistence-repository-style-dawning-orm-dapper.md)
 
 已落地规则：
 
