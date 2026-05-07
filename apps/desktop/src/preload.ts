@@ -120,10 +120,12 @@ export interface ChatCreateSessionResponse {
 
 /**
  * Frame shape forwarded from main's SSE parser to the renderer via
- * `webContents.send`. Per ADR-032 §决策 H1 there are exactly three
- * frame kinds — `chunk`, `done`, `error`. The discriminator is the
- * SSE `event:` line; the per-frame fields are extracted from the
- * `data:` JSON payload.
+ * `webContents.send`. Per ADR-032 §决策 H1 the canonical frame kinds
+ * are <c>chunk</c> / <c>done</c> / <c>error</c>; ADR-038 §决策 D2
+ * adds an optional <c>memoryAnnotation</c> frame that — when present —
+ * always arrives BEFORE the first <c>chunk</c> frame and at most once
+ * per stream. The discriminator is the SSE <c>event:</c> line; the
+ * per-frame fields are extracted from the <c>data:</c> JSON payload.
  */
 /**
  * Server-side projection of the ADR-033 MemoryLedgerEntry aggregate.
@@ -166,7 +168,35 @@ export type ChatStreamFrame =
       completionTokens: number | null;
       durationMs: number;
     }
-  | { kind: "error"; code: string; message: string };
+  | { kind: "error"; code: string; message: string }
+  | {
+      /**
+       * Side-channel frame per ADR-038 §决策 D2. Emitted once, before
+       * the first <c>chunk</c>, when the orchestrator cited at least
+       * one long-term memory entry to build the system prompt. Items
+       * are non-empty by construction; the API layer suppresses the
+       * frame entirely when the orchestrator's annotation list is
+       * empty so the renderer never has to special-case 0 items.
+       */
+      kind: "memoryAnnotation";
+      items: ChatMemoryAnnotationItem[];
+    };
+
+/**
+ * One cited memory entry in a <c>memoryAnnotation</c> frame
+ * (ADR-038 §决策 D2). The renderer uses this to populate the muted
+ * "使用了 N 条记忆" hint and any future expandable details panel.
+ */
+export interface ChatMemoryAnnotationItem {
+  /** Full GUID of the underlying ledger entry. */
+  id: string;
+  /**
+   * The first 80 characters of the entry's content with an ellipsis
+   * suffix when truncated. Built by <c>ChatAppService.BuildAnnotations</c>
+   * and shipped verbatim by the API.
+   */
+  contentPreview: string;
+}
 
 const api = {
   runtime: {

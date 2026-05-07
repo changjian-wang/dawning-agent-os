@@ -315,7 +315,7 @@ ipcMain.handle(
 );
 
 interface ChatStreamFrame {
-  kind: "chunk" | "done" | "error";
+  kind: "chunk" | "done" | "error" | "memoryAnnotation";
   [field: string]: unknown;
 }
 
@@ -324,7 +324,9 @@ interface ChatStreamFrame {
  * `POST /api/chat/sessions/{id}/messages` and forwards each frame to
  * <paramref name="onFrame"/>. Per ADR-032 §决策 H1 each frame is
  * exactly one `event: NAME\n` line followed by one `data: JSON\n` line
- * and a blank-line terminator. We support
+ * and a blank-line terminator. The recognized event names are
+ * `chunk` / `done` / `error` (ADR-032 §决策 H1) plus `memoryAnnotation`
+ * (ADR-038 §决策 D2). We support
  * <list type="bullet">
 ///   <item><description>CRLF or LF line endings (we normalize early).</description></item>
 ///   <item><description>SSE comment lines (lines starting with ":") which we skip.</description></item>
@@ -400,7 +402,7 @@ function parseSseFrame(rawFrame: string): ChatStreamFrame | null {
   if (eventName === null || dataLines.length === 0) {
     return null;
   }
-  if (eventName !== "chunk" && eventName !== "done" && eventName !== "error") {
+  if (eventName !== "chunk" && eventName !== "done" && eventName !== "error" && eventName !== "memoryAnnotation") {
     return null;
   }
 

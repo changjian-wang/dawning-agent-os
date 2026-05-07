@@ -386,6 +386,55 @@
         font-size: 13px;
         text-align: center;
       }
+      /* ADR-038 §决策 D2: muted "📒 引用了 N 条 memory" footer attached
+         to an assistant bubble when the orchestrator cited long-term
+         memory. Default collapsed; click toggles a list of entries
+         showing the truncated GUID + 80-char content preview so
+         developers can cross-reference the Memory view without the
+         hint becoming the headline. All values are set with
+         .textContent so a malicious memory contentPreview cannot
+         inject HTML. */
+      .chat-msg .memory-annotation {
+        margin-top: 6px;
+        font-size: 11px;
+        line-height: 1.45;
+        opacity: 0.55;
+        color: #c8c8c8;
+      }
+      .chat-msg .memory-annotation .summary {
+        cursor: pointer;
+        user-select: none;
+        font-style: italic;
+      }
+      .chat-msg .memory-annotation .summary:hover {
+        opacity: 0.85;
+      }
+      .chat-msg .memory-annotation .summary::after {
+        content: " ▸";
+        font-style: normal;
+        opacity: 0.7;
+      }
+      .chat-msg .memory-annotation.expanded .summary::after {
+        content: " ▾";
+      }
+      .chat-msg .memory-annotation ul {
+        display: none;
+        margin: 6px 0 0 0;
+        padding-left: 18px;
+        font-style: normal;
+      }
+      .chat-msg .memory-annotation.expanded ul {
+        display: block;
+      }
+      .chat-msg .memory-annotation li {
+        margin-bottom: 3px;
+        word-break: break-word;
+      }
+      .chat-msg .memory-annotation .id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        opacity: 0.65;
+        margin-right: 6px;
+      }
       .chat-composer {
         flex-shrink: 0;
         border-top: 1px solid #2a2a2a;
@@ -1429,6 +1478,49 @@
                   const code = (frame.code || 'llm.upstreamUnavailable');
                   const message = (frame.message || 'Stream failed.');
                   assistantText.textContent = code + ' — ' + message;
+                } else if (frame.kind === 'memoryAnnotation') {
+                  // ADR-038 §决策 D2: muted "📒 引用了 N 条 memory" footer
+                  // attached BELOW the assistant text. Default collapsed
+                  // so it's never the headline; click toggles the list.
+                  // The frame is emitted at most once per stream and
+                  // always before the first chunk (ADR-038 §决策 D2),
+                  // so attaching here guarantees the bubble already
+                  // exists and the footer outlives subsequent chunks.
+                  const items = Array.isArray(frame.items) ? frame.items : [];
+                  if (items.length === 0) {
+                    return; // Defensive: API suppresses empty frames.
+                  }
+                  const annotation = document.createElement('div');
+                  annotation.className = 'memory-annotation';
+                  const summary = document.createElement('div');
+                  summary.className = 'summary';
+                  summary.textContent = '📒 引用了 ' + items.length + ' 条 memory';
+                  annotation.appendChild(summary);
+                  const list = document.createElement('ul');
+                  for (const item of items) {
+                    const li = document.createElement('li');
+                    const idSpan = document.createElement('span');
+                    idSpan.className = 'id';
+                    // First 8 hex of the GUID is enough to grep in the
+                    // Memory view; full id stays in the dataset so
+                    // future "open in Memory" can read it without
+                    // re-parsing.
+                    const fullId = typeof item.id === 'string' ? item.id : '';
+                    idSpan.textContent = fullId.slice(0, 8);
+                    if (fullId) idSpan.title = fullId;
+                    li.appendChild(idSpan);
+                    const previewSpan = document.createElement('span');
+                    previewSpan.textContent =
+                      typeof item.contentPreview === 'string' ? item.contentPreview : '';
+                    li.appendChild(previewSpan);
+                    list.appendChild(li);
+                  }
+                  annotation.appendChild(list);
+                  summary.addEventListener('click', () => {
+                    annotation.classList.toggle('expanded');
+                  });
+                  assistantBubble.appendChild(annotation);
+                  scrollToBottom();
                 }
               },
             );
