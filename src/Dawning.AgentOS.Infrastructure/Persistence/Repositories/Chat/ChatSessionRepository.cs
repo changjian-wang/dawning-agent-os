@@ -1,9 +1,10 @@
 using System.Globalization;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Chat;
+using Dawning.AgentOS.Infrastructure.Persistence.Entities.Chat;
 using Dawning.ORM.Dapper;
 
-namespace Dawning.AgentOS.Infrastructure.Persistence.Chat;
+namespace Dawning.AgentOS.Infrastructure.Persistence.Repositories.Chat;
 
 /// <summary>
 /// Infrastructure implementation of <see cref="IChatSessionRepository"/>

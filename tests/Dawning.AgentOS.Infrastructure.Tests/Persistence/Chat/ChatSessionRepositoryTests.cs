@@ -1,7 +1,7 @@
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Infrastructure.Persistence;
-using Dawning.AgentOS.Infrastructure.Persistence.Chat;
+using Dawning.AgentOS.Infrastructure.Persistence.Repositories.Chat;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;

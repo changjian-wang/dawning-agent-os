@@ -1,10 +1,11 @@
 using System.Globalization;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Memory;
+using Dawning.AgentOS.Infrastructure.Persistence.Entities.Memory;
 using Dawning.ORM.Dapper;
 using static Dawning.ORM.Dapper.SqlMapperExtensions;
 
-namespace Dawning.AgentOS.Infrastructure.Persistence.Memory;
+namespace Dawning.AgentOS.Infrastructure.Persistence.Repositories.Memory;
 
 /// <summary>
 /// Infrastructure implementation of <see cref="IMemoryLedgerRepository"/>

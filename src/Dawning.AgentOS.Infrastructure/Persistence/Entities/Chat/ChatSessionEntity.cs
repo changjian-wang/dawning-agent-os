@@ -1,6 +1,6 @@
 using Dawning.ORM.Dapper;
 
-namespace Dawning.AgentOS.Infrastructure.Persistence.Chat;
+namespace Dawning.AgentOS.Infrastructure.Persistence.Entities.Chat;
 
 /// <summary>
 /// ORM persistence shape for <c>chat_sessions</c>. Kept separate from

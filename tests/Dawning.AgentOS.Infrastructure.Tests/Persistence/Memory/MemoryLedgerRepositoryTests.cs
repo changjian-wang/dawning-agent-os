@@ -1,7 +1,7 @@
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Memory;
 using Dawning.AgentOS.Infrastructure.Persistence;
-using Dawning.AgentOS.Infrastructure.Persistence.Memory;
+using Dawning.AgentOS.Infrastructure.Persistence.Repositories.Memory;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;

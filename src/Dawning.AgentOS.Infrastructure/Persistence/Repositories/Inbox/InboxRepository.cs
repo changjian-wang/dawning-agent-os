@@ -1,9 +1,10 @@
 using System.Globalization;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Inbox;
+using Dawning.AgentOS.Infrastructure.Persistence.Entities.Inbox;
 using Dawning.ORM.Dapper;
 
-namespace Dawning.AgentOS.Infrastructure.Persistence.Inbox;
+namespace Dawning.AgentOS.Infrastructure.Persistence.Repositories.Inbox;
 
 /// <summary>
 /// Infrastructure implementation of <see cref="IInboxRepository"/> using
@@ -104,10 +105,7 @@ public sealed class InboxRepository(IDbConnectionFactory connectionFactory) : II
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return await connection
-            .Builder<InboxItemEntity>()
-            .CountAsync()
-            .ConfigureAwait(false);
+        return await connection.Builder<InboxItemEntity>().CountAsync().ConfigureAwait(false);
     }
 
     private static InboxItemEntity ToEntity(InboxItem item) =>
@@ -120,7 +118,10 @@ public sealed class InboxRepository(IDbConnectionFactory connectionFactory) : II
                 IsoRoundTripFormat,
                 CultureInfo.InvariantCulture
             ),
-            CreatedAtUtc = item.CreatedAt.ToString(IsoRoundTripFormat, CultureInfo.InvariantCulture),
+            CreatedAtUtc = item.CreatedAt.ToString(
+                IsoRoundTripFormat,
+                CultureInfo.InvariantCulture
+            ),
         };
 
     private static InboxItem MapEntity(InboxItemEntity entity)

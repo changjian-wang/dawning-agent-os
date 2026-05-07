@@ -1,6 +1,6 @@
 using Dawning.ORM.Dapper;
 
-namespace Dawning.AgentOS.Infrastructure.Persistence.Memory;
+namespace Dawning.AgentOS.Infrastructure.Persistence.Entities.Memory;
 
 /// <summary>
 /// ORM persistence shape for <c>memory_entries</c>. Kept separate from

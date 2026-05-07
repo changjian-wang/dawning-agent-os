@@ -1,7 +1,7 @@
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Inbox;
 using Dawning.AgentOS.Infrastructure.Persistence;
-using Dawning.AgentOS.Infrastructure.Persistence.Inbox;
+using Dawning.AgentOS.Infrastructure.Persistence.Repositories.Inbox;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;

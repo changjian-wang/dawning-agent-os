@@ -1,6 +1,6 @@
 using Dawning.ORM.Dapper;
 
-namespace Dawning.AgentOS.Infrastructure.Persistence.Inbox;
+namespace Dawning.AgentOS.Infrastructure.Persistence.Entities.Inbox;
 
 /// <summary>
 /// ORM persistence shape for <c>inbox_items</c>. Kept separate from the
