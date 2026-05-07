@@ -1,56 +1,34 @@
 using System.Globalization;
-using Dapper;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Chat;
+using Dawning.ORM.Dapper;
 
 namespace Dawning.AgentOS.Infrastructure.Persistence.Chat;
 
 /// <summary>
-/// V0 Dapper-based implementation of <see cref="IChatSessionRepository"/>.
+/// Infrastructure implementation of <see cref="IChatSessionRepository"/>
+/// using <c>Dawning.ORM.Dapper</c>. Per ADR-036 this repository follows
+/// the same style as <see cref="Inbox.InboxRepository"/>: PO persistence
+/// entity + attribute mapping + aggregate rehydrate on read.
+/// </summary>
+/// <remarks>
+/// <para>
 /// Per ADR-032 §决策 D2 each operation opens a fresh ADO.NET connection
 /// through <see cref="IDbConnectionFactory"/> and disposes it via
 /// <c>await using</c>; the factory itself is scoped, the repository
 /// scoped accordingly.
-/// </summary>
-/// <remarks>
+/// </para>
+/// <para>
 /// All timestamps round-trip as ISO-8601 strings through the <c>"O"</c>
-/// format specifier — same convention as
-/// <see cref="Inbox.InboxRepository"/>. Aggregates are rehydrated via
-/// <see cref="ChatSession.Rehydrate"/> /
+/// format specifier — same convention as <see cref="Inbox.InboxRepository"/>.
+/// Aggregates rehydrate via <see cref="ChatSession.Rehydrate"/> /
 /// <see cref="ChatMessage.Rehydrate"/> so no domain events fire on load.
+/// </para>
 /// </remarks>
 public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory)
     : IChatSessionRepository
 {
     private const string IsoRoundTripFormat = "O";
-
-    private const string InsertSessionSql =
-        "INSERT INTO chat_sessions (id, title, created_at_utc, updated_at_utc) "
-        + "VALUES (@id, @title, @createdAtUtc, @updatedAtUtc)";
-
-    private const string UpdateSessionSql =
-        "UPDATE chat_sessions SET title = @title, updated_at_utc = @updatedAtUtc "
-        + "WHERE id = @id";
-
-    private const string GetSessionSql =
-        "SELECT id, title, created_at_utc, updated_at_utc "
-        + "FROM chat_sessions WHERE id = @id LIMIT 1";
-
-    private const string ListSessionsSql =
-        "SELECT id, title, created_at_utc, updated_at_utc "
-        + "FROM chat_sessions "
-        + "ORDER BY updated_at_utc DESC, id DESC "
-        + "LIMIT @limit OFFSET @offset";
-
-    private const string InsertMessageSql =
-        "INSERT INTO chat_messages "
-        + "(id, session_id, role, content, created_at_utc, model, prompt_tokens, completion_tokens) "
-        + "VALUES (@id, @sessionId, @role, @content, @createdAtUtc, @model, @promptTokens, @completionTokens)";
-
-    private const string LoadMessagesSql =
-        "SELECT id, session_id, role, content, created_at_utc, model, prompt_tokens, completion_tokens "
-        + "FROM chat_messages WHERE session_id = @sessionId "
-        + "ORDER BY created_at_utc ASC, id ASC";
 
     private readonly IDbConnectionFactory _connectionFactory =
         connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
@@ -62,17 +40,20 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var row = await connection
-            .QuerySingleOrDefaultAsync<ChatSessionRow>(
-                new CommandDefinition(
-                    GetSessionSql,
-                    new { id = sessionId.ToString() },
-                    cancellationToken: cancellationToken
-                )
-            )
+        // Use the QueryBuilder predicate path rather than connection.GetAsync<T>(id):
+        // GetAsync routes the row through a dynamic-typed callsite which the runtime
+        // binder fails to convert back to T (see Dawning.ORM.Dapper 1.3.0). The
+        // builder path is statically typed end-to-end and works with the same
+        // attribute mapping — and is mandated by the persistence-repository-conventions
+        // rule regardless of the upstream fix in 1.3.1.
+        var idValue = sessionId.ToString();
+        var entity = await connection
+            .Builder<ChatSessionEntity>()
+            .Where(x => x.Id == idValue)
+            .FirstOrDefaultAsync()
             .ConfigureAwait(false);
 
-        return row is null ? null : MapSession(row);
+        return entity is null ? null : MapSession(entity);
     }
 
     /// <inheritdoc />
@@ -86,20 +67,19 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var rows = await connection
-            .QueryAsync<ChatSessionRow>(
-                new CommandDefinition(
-                    ListSessionsSql,
-                    new { limit, offset },
-                    cancellationToken: cancellationToken
-                )
-            )
+        var entities = await connection
+            .Builder<ChatSessionEntity>()
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync()
             .ConfigureAwait(false);
 
-        var sessions = new List<ChatSession>();
-        foreach (var row in rows)
+        var sessions = new List<ChatSession>(entities.Count);
+        foreach (var entity in entities)
         {
-            sessions.Add(MapSession(row));
+            sessions.Add(MapSession(entity));
         }
         return sessions;
     }
@@ -114,20 +94,19 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var rows = await connection
-            .QueryAsync<ChatMessageRow>(
-                new CommandDefinition(
-                    LoadMessagesSql,
-                    new { sessionId = sessionId.ToString() },
-                    cancellationToken: cancellationToken
-                )
-            )
+        var idValue = sessionId.ToString();
+        var entities = await connection
+            .Builder<ChatMessageEntity>()
+            .Where(x => x.SessionId == idValue)
+            .OrderBy(x => x.CreatedAtUtc)
+            .ThenBy(x => x.Id)
+            .ToListAsync()
             .ConfigureAwait(false);
 
-        var messages = new List<ChatMessage>();
-        foreach (var row in rows)
+        var messages = new List<ChatMessage>(entities.Count);
+        foreach (var entity in entities)
         {
-            messages.Add(MapMessage(row));
+            messages.Add(MapMessage(entity));
         }
         return messages;
     }
@@ -141,29 +120,8 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var parameters = new
-        {
-            id = session.Id.ToString(),
-            title = session.Title,
-            createdAtUtc = session.CreatedAt.ToString(
-                IsoRoundTripFormat,
-                CultureInfo.InvariantCulture
-            ),
-            updatedAtUtc = session.UpdatedAt.ToString(
-                IsoRoundTripFormat,
-                CultureInfo.InvariantCulture
-            ),
-        };
-
-        await connection
-            .ExecuteAsync(
-                new CommandDefinition(
-                    InsertSessionSql,
-                    parameters,
-                    cancellationToken: cancellationToken
-                )
-            )
-            .ConfigureAwait(false);
+        var entity = ToSessionEntity(session);
+        _ = await connection.InsertAsync(entity).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -175,25 +133,11 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var parameters = new
-        {
-            id = session.Id.ToString(),
-            title = session.Title,
-            updatedAtUtc = session.UpdatedAt.ToString(
-                IsoRoundTripFormat,
-                CultureInfo.InvariantCulture
-            ),
-        };
-
-        await connection
-            .ExecuteAsync(
-                new CommandDefinition(
-                    UpdateSessionSql,
-                    parameters,
-                    cancellationToken: cancellationToken
-                )
-            )
-            .ConfigureAwait(false);
+        // CreatedAtUtc carries [IgnoreUpdate] on the entity so the
+        // generated UPDATE skips it — matching the prior hand-written
+        // SQL which only set title and updated_at_utc.
+        var entity = ToSessionEntity(session);
+        _ = await connection.UpdateAsync(entity).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -205,50 +149,59 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var parameters = new
+        var entity = ToMessageEntity(message);
+        _ = await connection.InsertAsync(entity).ConfigureAwait(false);
+    }
+
+    private static ChatSessionEntity ToSessionEntity(ChatSession session) =>
+        new()
         {
-            id = message.Id.ToString(),
-            sessionId = message.SessionId.ToString(),
-            role = (int)message.Role,
-            content = message.Content,
-            createdAtUtc = message.CreatedAt.ToString(
+            Id = session.Id.ToString(),
+            Title = session.Title,
+            CreatedAtUtc = session.CreatedAt.ToString(
                 IsoRoundTripFormat,
                 CultureInfo.InvariantCulture
             ),
-            model = message.Model,
-            promptTokens = message.PromptTokens,
-            completionTokens = message.CompletionTokens,
+            UpdatedAtUtc = session.UpdatedAt.ToString(
+                IsoRoundTripFormat,
+                CultureInfo.InvariantCulture
+            ),
         };
 
-        await connection
-            .ExecuteAsync(
-                new CommandDefinition(
-                    InsertMessageSql,
-                    parameters,
-                    cancellationToken: cancellationToken
-                )
-            )
-            .ConfigureAwait(false);
-    }
+    private static ChatMessageEntity ToMessageEntity(ChatMessage message) =>
+        new()
+        {
+            Id = message.Id.ToString(),
+            SessionId = message.SessionId.ToString(),
+            Role = (int)message.Role,
+            Content = message.Content,
+            CreatedAtUtc = message.CreatedAt.ToString(
+                IsoRoundTripFormat,
+                CultureInfo.InvariantCulture
+            ),
+            Model = message.Model,
+            PromptTokens = message.PromptTokens,
+            CompletionTokens = message.CompletionTokens,
+        };
 
-    private static ChatSession MapSession(ChatSessionRow row) =>
+    private static ChatSession MapSession(ChatSessionEntity entity) =>
         ChatSession.Rehydrate(
-            id: Guid.Parse(row.Id, CultureInfo.InvariantCulture),
-            title: row.Title,
-            createdAt: ParseUtc(row.CreatedAtUtc),
-            updatedAt: ParseUtc(row.UpdatedAtUtc)
+            id: Guid.Parse(entity.Id, CultureInfo.InvariantCulture),
+            title: entity.Title,
+            createdAt: ParseUtc(entity.CreatedAtUtc),
+            updatedAt: ParseUtc(entity.UpdatedAtUtc)
         );
 
-    private static ChatMessage MapMessage(ChatMessageRow row) =>
+    private static ChatMessage MapMessage(ChatMessageEntity entity) =>
         ChatMessage.Rehydrate(
-            id: Guid.Parse(row.Id, CultureInfo.InvariantCulture),
-            sessionId: Guid.Parse(row.SessionId, CultureInfo.InvariantCulture),
-            role: (ChatRole)row.Role,
-            content: row.Content,
-            createdAt: ParseUtc(row.CreatedAtUtc),
-            model: row.Model,
-            promptTokens: row.PromptTokens,
-            completionTokens: row.CompletionTokens
+            id: Guid.Parse(entity.Id, CultureInfo.InvariantCulture),
+            sessionId: Guid.Parse(entity.SessionId, CultureInfo.InvariantCulture),
+            role: (ChatRole)entity.Role,
+            content: entity.Content,
+            createdAt: ParseUtc(entity.CreatedAtUtc),
+            model: entity.Model,
+            promptTokens: entity.PromptTokens,
+            completionTokens: entity.CompletionTokens
         );
 
     private static DateTimeOffset ParseUtc(string value) =>
@@ -257,32 +210,4 @@ public sealed class ChatSessionRepository(IDbConnectionFactory connectionFactory
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
         );
-
-    /// <summary>
-    /// Dapper materialization shape for <c>chat_sessions</c>. Column
-    /// names are snake_case per migration; the <c>matchNamesWithUnderscores</c>
-    /// option enabled in the DI extensions handles the mapping.
-    /// </summary>
-    private sealed class ChatSessionRow
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Title { get; set; } = string.Empty;
-        public string CreatedAtUtc { get; set; } = string.Empty;
-        public string UpdatedAtUtc { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Dapper materialization shape for <c>chat_messages</c>.
-    /// </summary>
-    private sealed class ChatMessageRow
-    {
-        public string Id { get; set; } = string.Empty;
-        public string SessionId { get; set; } = string.Empty;
-        public int Role { get; set; }
-        public string Content { get; set; } = string.Empty;
-        public string CreatedAtUtc { get; set; } = string.Empty;
-        public string? Model { get; set; }
-        public int? PromptTokens { get; set; }
-        public int? CompletionTokens { get; set; }
-    }
 }
