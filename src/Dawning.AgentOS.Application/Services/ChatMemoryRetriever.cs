@@ -11,9 +11,10 @@ namespace Dawning.AgentOS.Application.Services;
 /// Per ADR-038 §决策 H1 the default <see cref="IChatMemoryRetriever"/>
 /// implementation. Tokenizes the user message into keywords (ASCII word
 /// runs ≥ 2 chars + sliding CJK 2-grams), forwards them to
-/// <see cref="IMemoryLedgerRepository.SearchByKeywordsAsync"/>, and
-/// silently degrades to an empty list on any infrastructure failure
-/// (§决策 F1) so chat keeps streaming when memory retrieval breaks.
+/// <see cref="IMemoryLedgerRepository.SearchByKeywordsAsync"/>, drops
+/// question-shaped entries per ADR-039 §决策 A1+B1, and silently
+/// degrades to an empty list on any infrastructure failure (§决策 F1)
+/// so chat keeps streaming when memory retrieval breaks.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -109,9 +110,10 @@ public sealed class ChatMemoryRetriever(
             return Array.Empty<MemoryLedgerEntry>();
         }
 
+        IReadOnlyList<MemoryLedgerEntry> raw;
         try
         {
-            return await _memoryRepository
+            raw = await _memoryRepository
                 .SearchByKeywordsAsync(keywords, MaxRetrievedEntries, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -133,6 +135,57 @@ public sealed class ChatMemoryRetriever(
             );
             return Array.Empty<MemoryLedgerEntry>();
         }
+
+        // Per ADR-039 §决策 A1+B1 drop question-shaped entries after
+        // the repository returns. Ledger may contain user-captured
+        // questions (e.g. promoted from inbox via ADR-034) that share
+        // generic CJK bigrams like "什么" with the user's current
+        // message; injecting such entries lets the LLM treat an
+        // unanswered question as a fact (ADR-038 §adr_revisit_when
+        // condition #3 early form). Filter is silent (D1) and accepts
+        // truncation below MaxRetrievedEntries (C1).
+        if (raw.Count == 0)
+        {
+            return raw;
+        }
+
+        var filtered = new List<MemoryLedgerEntry>(capacity: raw.Count);
+        foreach (var entry in raw)
+        {
+            if (!IsLikelyQuestion(entry.Content))
+            {
+                filtered.Add(entry);
+            }
+        }
+        return filtered;
+    }
+
+    /// <summary>
+    /// Per ADR-039 §决策 B1 returns <see langword="true"/> when
+    /// <paramref name="content"/> looks like an unanswered question:
+    /// the trailing-trimmed text ends with an ASCII <c>?</c> or a CJK
+    /// fullwidth <c>？</c>. Rejected B2 (interrogative-word dictionary)
+    /// and B3 (LLM classification) per the ADR's §被否决方案 B —
+    /// trailing punctuation is the most stable signal that survives
+    /// multilingual ledger content. Internal so unit tests in
+    /// <c>Dawning.AgentOS.Application.Tests</c> can pin the §可机器化判据
+    /// edge cases directly.
+    /// </summary>
+    internal static bool IsLikelyQuestion(string? content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return false;
+        }
+
+        var trimmed = content.AsSpan().TrimEnd();
+        if (trimmed.Length == 0)
+        {
+            return false;
+        }
+
+        var last = trimmed[^1];
+        return last == '?' || last == '？';
     }
 
     /// <summary>

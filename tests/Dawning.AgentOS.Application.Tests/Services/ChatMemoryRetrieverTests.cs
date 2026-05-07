@@ -184,6 +184,118 @@ public sealed class ChatMemoryRetrieverTests
         );
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // ADR-039 §可机器化判据 — IsLikelyQuestion edge cases
+    // ────────────────────────────────────────────────────────────────
+
+    [TestCase("以什么方式保存下来？", Description = "ADR-039 §可机器化判据 1: CJK fullwidth ？ at end")]
+    [TestCase("保存后会怎样?", Description = "ADR-039 §可机器化判据 1: ASCII ? at end")]
+    [TestCase("以什么方式保存下来？  ", Description = "ADR-039 §可机器化判据 1: trailing whitespace, then ？")]
+    [TestCase("以什么方式保存下来？\n", Description = "ADR-039 §可机器化判据 1: trailing newline, then ？")]
+    public void IsLikelyQuestion_TrailingQuestionMark_ReturnsTrue(string content)
+    {
+        Assert.That(ChatMemoryRetriever.IsLikelyQuestion(content), Is.True);
+    }
+
+    [TestCase("我目前在用 .NET 10 + Electron 开发桌面应用 dawning-agent-os", Description = "ADR-039 §可机器化判据 2: fact, no ?")]
+    [TestCase("我有 3 个项目? 不对，是 4 个", Description = "ADR-039 §可机器化判据 2: ? in middle, not trailing")]
+    [TestCase("", Description = "ADR-039 §可机器化判据 2: empty string")]
+    [TestCase("   ", Description = "ADR-039 §可机器化判据 2: whitespace only")]
+    [TestCase("\t\n", Description = "ADR-039 §可机器化判据 2: control whitespace only")]
+    public void IsLikelyQuestion_NoTrailingQuestionMark_ReturnsFalse(string content)
+    {
+        Assert.That(ChatMemoryRetriever.IsLikelyQuestion(content), Is.False);
+    }
+
+    [Test]
+    public void IsLikelyQuestion_Null_ReturnsFalse()
+    {
+        Assert.That(ChatMemoryRetriever.IsLikelyQuestion(null), Is.False);
+    }
+
+    [Test]
+    public async Task RetrieveAsync_RepositoryReturnsMixedFactAndQuestion_FiltersOutQuestions()
+    {
+        // ADR-039 §可机器化判据 3a: integration path — Repo returns
+        // [fact_a, question_b, fact_c]; RetrieveAsync returns
+        // [fact_a, fact_c] preserving repo ordering.
+        var factA = NewEntry("我目前在用 .NET 10 + Electron 开发桌面应用 dawning-agent-os");
+        var questionB = NewEntry("以什么方式保存下来？");
+        var factC = NewEntry("dawning-agent-os 的桌面端用 Electron + Vite");
+
+        var repo = new Mock<IMemoryLedgerRepository>(MockBehavior.Strict);
+        repo.Setup(r =>
+                r.SearchByKeywordsAsync(
+                    It.IsAny<IReadOnlyList<string>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new[] { factA, questionB, factC });
+
+        var sut = new ChatMemoryRetriever(repo.Object, NullLogger<ChatMemoryRetriever>.Instance);
+
+        var result = await sut.RetrieveAsync("我用什么技术栈开发桌面应用", CancellationToken.None);
+
+        Assert.That(result, Has.Count.EqualTo(2));
+        Assert.That(result[0], Is.SameAs(factA));
+        Assert.That(result[1], Is.SameAs(factC));
+        Assert.That(result.Any(e => e.Id == questionB.Id), Is.False);
+    }
+
+    [Test]
+    public async Task RetrieveAsync_RepositoryReturnsAllQuestions_ReturnsEmpty()
+    {
+        // ADR-039 §可机器化判据 3b: integration path — Repo returns all
+        // question-shaped entries; RetrieveAsync returns Empty
+        // (acceptable truncation per §决策 C1, silent per §决策 D1).
+        var q1 = NewEntry("以什么方式保存下来？");
+        var q2 = NewEntry("我下次去日本玩什么?");
+
+        var repo = new Mock<IMemoryLedgerRepository>(MockBehavior.Strict);
+        repo.Setup(r =>
+                r.SearchByKeywordsAsync(
+                    It.IsAny<IReadOnlyList<string>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(new[] { q1, q2 });
+
+        var sut = new ChatMemoryRetriever(repo.Object, NullLogger<ChatMemoryRetriever>.Instance);
+
+        var result = await sut.RetrieveAsync("我用什么技术栈", CancellationToken.None);
+
+        Assert.That(result, Is.Empty);
+    }
+
+    [Test]
+    public async Task RetrieveAsync_StillPassesMaxRetrievedEntries_ToRepository_AfterAdr039()
+    {
+        // ADR-039 §决策 A1: Repo limit unchanged at MaxRetrievedEntries.
+        // Filter happens after Repo returns; the cap is not lowered to
+        // compensate for filtered entries (acceptable truncation).
+        int capturedTake = -1;
+        var repo = new Mock<IMemoryLedgerRepository>();
+        repo.Setup(r =>
+                r.SearchByKeywordsAsync(
+                    It.IsAny<IReadOnlyList<string>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Callback<IReadOnlyList<string>, int, CancellationToken>(
+                (_, take, _) => capturedTake = take
+            )
+            .ReturnsAsync(Array.Empty<MemoryLedgerEntry>());
+
+        var sut = new ChatMemoryRetriever(repo.Object, NullLogger<ChatMemoryRetriever>.Instance);
+
+        _ = await sut.RetrieveAsync("hello memory", CancellationToken.None);
+
+        Assert.That(capturedTake, Is.EqualTo(ChatMemoryRetriever.MaxRetrievedEntries));
+    }
+
     private static MemoryLedgerEntry NewEntry(string content) =>
         MemoryLedgerEntry.Create(
             content: content,
