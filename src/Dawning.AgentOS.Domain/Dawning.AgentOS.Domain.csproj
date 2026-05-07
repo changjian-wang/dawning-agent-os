@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>Dawning.AgentOS.Domain</RootNamespace>
@@ -17,5 +16,4 @@
     <ItemGroup>
         <ProjectReference Include="..\Dawning.AgentOS.Domain.Core\Dawning.AgentOS.Domain.Core.csproj" />
     </ItemGroup>
-
 </Project>

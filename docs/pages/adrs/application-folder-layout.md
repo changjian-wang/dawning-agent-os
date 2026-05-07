@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/engineering-skeleton-v0.md, pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/engineering-skeleton-v0.md, pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/port-and-cross-layer-contract-assembly-split.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: superseded
 adr_date: 2026-04-30

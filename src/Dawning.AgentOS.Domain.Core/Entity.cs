@@ -23,8 +23,7 @@ namespace Dawning.AgentOS.Domain.Core;
 /// rehydration paths avoid calling business methods.
 /// </para>
 /// </remarks>
-public abstract class Entity<TId>
-    : IEquatable<Entity<TId>>
+public abstract class Entity<TId> : IEquatable<Entity<TId>>
     where TId : struct, IEquatable<TId>
 {
     /// <summary>
@@ -52,7 +51,8 @@ public abstract class Entity<TId>
         {
             throw new ArgumentException(
                 $"Entity id of type '{typeof(TId).Name}' must not be the default value.",
-                nameof(id));
+                nameof(id)
+            );
         }
 
         Id = id;
@@ -101,9 +101,8 @@ public abstract class Entity<TId>
     /// <inheritdoc/>
     public override int GetHashCode() => Id.GetHashCode();
 
-    public static bool operator ==(Entity<TId>? left, Entity<TId>? right)
-        => left is null ? right is null : left.Equals(right);
+    public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
+        left is null ? right is null : left.Equals(right);
 
-    public static bool operator !=(Entity<TId>? left, Entity<TId>? right)
-        => !(left == right);
+    public static bool operator !=(Entity<TId>? left, Entity<TId>? right) => !(left == right);
 }

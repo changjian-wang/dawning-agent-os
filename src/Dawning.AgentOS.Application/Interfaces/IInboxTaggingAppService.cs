@@ -33,8 +33,5 @@ public interface IInboxTaggingAppService
     /// → 400). <see cref="OperationCanceledException"/> from the LLM
     /// call is propagated, not wrapped.
     /// </returns>
-    Task<Result<InboxItemTags>> SuggestTagsAsync(
-        Guid itemId,
-        CancellationToken cancellationToken
-    );
+    Task<Result<InboxItemTags>> SuggestTagsAsync(Guid itemId, CancellationToken cancellationToken);
 }

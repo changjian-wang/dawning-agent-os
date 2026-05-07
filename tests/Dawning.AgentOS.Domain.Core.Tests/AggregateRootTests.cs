@@ -18,12 +18,8 @@ public sealed class AggregateRootTests
         public static TestAggregate Rehydrate(Guid id, DateTimeOffset createdAt)
         {
             var a = new TestAggregate();
-            typeof(Entity<Guid>)
-                .GetProperty(nameof(Id))!
-                .SetValue(a, id);
-            typeof(Entity<Guid>)
-                .GetProperty(nameof(CreatedAt))!
-                .SetValue(a, createdAt);
+            typeof(Entity<Guid>).GetProperty(nameof(Id))!.SetValue(a, id);
+            typeof(Entity<Guid>).GetProperty(nameof(CreatedAt))!.SetValue(a, createdAt);
             return a;
         }
 
@@ -82,9 +78,7 @@ public sealed class AggregateRootTests
     {
         var sut = new TestAggregate(Guid.NewGuid(), DateTimeOffset.UtcNow);
 
-        Assert.That(
-            () => sut.RaiseNull(),
-            Throws.ArgumentNullException);
+        Assert.That(() => sut.RaiseNull(), Throws.ArgumentNullException);
     }
 
     [Test]

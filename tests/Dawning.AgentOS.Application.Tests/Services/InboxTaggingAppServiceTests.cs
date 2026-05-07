@@ -1,6 +1,5 @@
-using Dawning.AgentOS.Application.Abstractions.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Inbox;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Application.Services;
 using Dawning.AgentOS.Domain.Core;
 using Dawning.AgentOS.Domain.Inbox;
@@ -58,8 +57,7 @@ public sealed class InboxTaggingAppServiceTests
     {
         var item = InboxItem.Capture("一篇关于人工智能与学习方法的文章", "chat", SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.SetupGet(p => p.ProviderName).Returns("OpenAI");
@@ -121,8 +119,7 @@ public sealed class InboxTaggingAppServiceTests
     {
         var item = InboxItem.Capture("the actual material", "chat", SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         LlmRequest? captured = null;
         var llm = new Mock<ILlmProvider>();
@@ -260,8 +257,7 @@ public sealed class InboxTaggingAppServiceTests
     {
         var item = InboxItem.Capture("x", null, SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
@@ -269,8 +265,8 @@ public sealed class InboxTaggingAppServiceTests
 
         var sut = new InboxTaggingAppService(repo.Object, llm.Object);
 
-        Assert.CatchAsync<OperationCanceledException>(
-            () => sut.SuggestTagsAsync(item.Id, CancellationToken.None)
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            sut.SuggestTagsAsync(item.Id, CancellationToken.None)
         );
     }
 
@@ -291,8 +287,7 @@ public sealed class InboxTaggingAppServiceTests
     {
         var item = InboxItem.Capture("hello", null, SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
@@ -320,8 +315,7 @@ public sealed class InboxTaggingAppServiceTests
     {
         var item = InboxItem.Capture("hello", null, SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
@@ -350,8 +344,7 @@ public sealed class InboxTaggingAppServiceTests
     {
         var item = InboxItem.Capture("hello", null, SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))

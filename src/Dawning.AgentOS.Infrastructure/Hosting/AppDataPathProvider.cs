@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using Dawning.AgentOS.Application.Abstractions.Hosting;
+using Dawning.AgentOS.Abstractions.Hosting;
 
 namespace Dawning.AgentOS.Infrastructure.Hosting;
 

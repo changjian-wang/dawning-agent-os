@@ -60,10 +60,7 @@ public sealed class InboxPromoteToMemoryEndpointTests
     public async Task Promote_Returns200WithLedgerProjection_WhenInboxItemExists()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var capturedId = await CaptureItemAsync(client, "用户希望被记住的一段话");
 
@@ -93,10 +90,7 @@ public sealed class InboxPromoteToMemoryEndpointTests
     public async Task Promote_PersistsRowVisibleViaMemoryListEndpoint()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var capturedId = await CaptureItemAsync(client, "需要在 Memory 列表里看到的内容");
 
@@ -113,7 +107,11 @@ public sealed class InboxPromoteToMemoryEndpointTests
         var listPayload = await list.Content.ReadFromJsonAsync<MemoryListPayload>();
         Assert.That(listPayload, Is.Not.Null);
         var match = listPayload!.Items.SingleOrDefault(i => i.Id == promoted!.Id);
-        Assert.That(match, Is.Not.Null, "promoted ledger row should be visible in /api/memory list");
+        Assert.That(
+            match,
+            Is.Not.Null,
+            "promoted ledger row should be visible in /api/memory list"
+        );
         Assert.That(match!.Source, Is.EqualTo("InboxAction"));
         Assert.That(match.Scope, Is.EqualTo("inbox"));
         Assert.That(match.Content, Is.EqualTo("需要在 Memory 列表里看到的内容"));
@@ -123,10 +121,7 @@ public sealed class InboxPromoteToMemoryEndpointTests
     public async Task Promote_Returns404_WhenInboxItemMissing()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var unknownId = Guid.CreateVersion7(DateTimeOffset.UtcNow);
 
@@ -149,10 +144,7 @@ public sealed class InboxPromoteToMemoryEndpointTests
     public async Task Promote_TwiceProducesDistinctLedgerRows_NoDedup()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var capturedId = await CaptureItemAsync(client, "重复点击 Save 应当产生两条");
 
@@ -195,10 +187,7 @@ public sealed class InboxPromoteToMemoryEndpointTests
     public async Task Promote_PassesContentVerbatim_NoTrim()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         const string content = "  原文带前后空格 — 不能被服务端动手改  ";
         var capturedId = await CaptureItemAsync(client, content);

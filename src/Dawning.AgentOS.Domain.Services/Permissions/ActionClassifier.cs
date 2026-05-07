@@ -13,8 +13,10 @@ namespace Dawning.AgentOS.Domain.Services.Permissions;
 /// </remarks>
 public sealed class ActionClassifier : IActionClassifier
 {
-    private static readonly IReadOnlyDictionary<string, ActionLevel> Map = new Dictionary<string, ActionLevel>(
-        StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<string, ActionLevel> Map = new Dictionary<
+        string,
+        ActionLevel
+    >(StringComparer.Ordinal)
     {
         [ActionKind.ReadSummarize.Code] = ActionLevel.L0,
         [ActionKind.ReadClassify.Code] = ActionLevel.L0,
@@ -33,7 +35,8 @@ public sealed class ActionClassifier : IActionClassifier
         {
             throw new ArgumentException(
                 $"Unknown action kind '{kind.Code}'. Add it to the V0 vocabulary or extend the classifier.",
-                nameof(kind));
+                nameof(kind)
+            );
         }
 
         return level;

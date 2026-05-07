@@ -1,5 +1,5 @@
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Chat;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Core;
 
 namespace Dawning.AgentOS.Application.Interfaces;

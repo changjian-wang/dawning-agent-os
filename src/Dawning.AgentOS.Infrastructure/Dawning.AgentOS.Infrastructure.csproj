@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <!--
-      Infrastructure adapter project (per ADR-017 + ADR-023 + ADR-024).
+      Infrastructure adapter project (per ADR-017 + ADR-023 + ADR-024 + ADR-037).
 
       V0 scope:
         Time/         IClock + IRuntimeStartTimeProvider implementations.
@@ -19,10 +19,16 @@
 
       IDomainEventDispatcher remains an open ADR-022 §10 todo and is not
       implemented here yet; nothing in Application currently injects it.
+      Per ADR-037 the dispatcher port now lives in Domain.Core.
 
       Dapper itself is intentionally deferred until the first Aggregate
       Repository lands (see ADR-024 §F1 / §G1); S5 uses raw DbCommand
       ExecuteScalarAsync for the smoke read in RuntimeAppService.
+
+      Per ADR-037 Infrastructure references Abstractions (ports + LLM DTOs)
+      and Domain (aggregates), but explicitly does NOT reference
+      Application; that boundary is enforced by the architecture test
+      Infrastructure_DoesNotReferenceApplication.
     -->
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
@@ -35,7 +41,8 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
+        <ProjectReference Include="..\Dawning.AgentOS.Abstractions\Dawning.AgentOS.Abstractions.csproj" />
+        <ProjectReference Include="..\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
     </ItemGroup>
 
     <!-- ADR-024 §3: schema bootstrap files are embedded resources so the

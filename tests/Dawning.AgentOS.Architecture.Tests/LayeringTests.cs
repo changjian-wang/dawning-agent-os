@@ -61,9 +61,14 @@ public sealed class LayeringTests
     private const string DomainName = "Dawning.AgentOS.Domain";
     private const string DomainServicesName = "Dawning.AgentOS.Domain.Services";
     private const string ApplicationName = "Dawning.AgentOS.Application";
+    private const string AbstractionsName = "Dawning.AgentOS.Abstractions";
+    private const string DomainCoreName = "Dawning.AgentOS.Domain.Core";
 
     private static readonly Assembly DomainCore =
         typeof(global::Dawning.AgentOS.Domain.Core.Result).Assembly;
+
+    private static readonly Assembly Abstractions =
+        typeof(global::Dawning.AgentOS.Abstractions.IClock).Assembly;
 
     private static readonly Assembly Domain =
         typeof(global::Dawning.AgentOS.Domain.Permissions.ActionLevel).Assembly;
@@ -275,6 +280,184 @@ public sealed class LayeringTests
     }
 
     [Test]
+    public void Infrastructure_DoesNotReferenceApplication()
+    {
+        // Per ADR-037 D5 Infrastructure must not depend on Application.
+        // The contract / port surface that Infrastructure adapters bind to
+        // lives in the Dawning.AgentOS.Abstractions assembly (and, for the
+        // domain-event dispatcher port, in Dawning.AgentOS.Domain.Core).
+        // Pulling in Application would re-introduce the rebuild coupling
+        // that ADR-037 was created to eliminate.
+        var refs = ReferencedAssemblyNames(Infrastructure);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                refs,
+                Does.Not.Contain(ApplicationName),
+                "Infrastructure must not reference Application (ADR-037 D5)."
+            );
+            Assert.That(
+                refs,
+                Does.Contain(AbstractionsName),
+                "Infrastructure must reference Abstractions for ports + LLM DTOs."
+            );
+            Assert.That(
+                refs,
+                Does.Contain(DomainCoreName),
+                "Infrastructure must reach Domain.Core for IDomainEventDispatcher (transitive via Domain or Abstractions)."
+            );
+        });
+    }
+
+    [Test]
+    public void Abstractions_OnlyReferencesDomainCoreSharedKernel()
+    {
+        // Per ADR-037 D1 + D5 the Abstractions assembly is allowed exactly
+        // one project reference: Domain.Core, used as a shared kernel for
+        // Result<T> / DomainError. References to Domain (aggregates),
+        // Domain.Services (cross-aggregate domain logic), Application
+        // (use cases), Infrastructure (adapters), or Api (composition
+        // root) would invert the dependency direction the ADR pins down.
+        var refs = ReferencedAssemblyNames(Abstractions);
+
+        var forbidden = new[]
+        {
+            DomainName,
+            DomainServicesName,
+            ApplicationName,
+            "Dawning.AgentOS.Infrastructure",
+            "Dawning.AgentOS.Api",
+        };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(
+                refs,
+                Does.Not.Contain(name),
+                $"Abstractions must not reference '{name}' (ADR-037 D5)."
+            );
+        }
+
+        // The single allowed dependency must actually be present; if it
+        // is silently dropped the shared-kernel primitives Result<T> /
+        // DomainError stop being available and consumers break in a
+        // confusing way at compile time.
+        Assert.That(
+            refs,
+            Does.Contain(DomainCoreName),
+            "Abstractions must reference Domain.Core for Result<T> / DomainError shared kernel (ADR-037 D1)."
+        );
+    }
+
+    [Test]
+    public void Abstractions_DoesNotReferenceFrameworkAdapterPackages()
+    {
+        // Per ADR-037 D1 + D6 Abstractions must stay free of any framework
+        // adapter package. It is the contract surface, not the binding
+        // surface; concrete drivers (SQLite, Dapper, Dawning.ORM.Dapper),
+        // web stack (AspNetCore), and previously-removed pipeline
+        // (MediatR) all belong in Infrastructure or Api.
+        var refs = ReferencedAssemblyNames(Abstractions);
+
+        var forbidden = new[]
+        {
+            "Microsoft.Data.Sqlite",
+            "Dapper",
+            "Dawning.ORM.Dapper",
+            "Microsoft.AspNetCore",
+            "Microsoft.AspNetCore.App",
+            "Microsoft.Extensions.DependencyInjection",
+            "Microsoft.Extensions.Hosting",
+            "Microsoft.Extensions.Hosting.Abstractions",
+            "Microsoft.Extensions.Http",
+            "Microsoft.Extensions.Options",
+            "Microsoft.Extensions.Logging",
+            "Microsoft.Extensions.Logging.Abstractions",
+            "MediatR",
+            "MediatR.Contracts",
+        };
+
+        foreach (var name in forbidden)
+        {
+            Assert.That(
+                refs,
+                Does.Not.Contain(name),
+                $"Abstractions must not reference framework / adapter package '{name}' (ADR-037 D6)."
+            );
+        }
+    }
+
+    [Test]
+    public void DomainCore_DispatcherSignaturesOnlyReferenceBclAndDomainCore()
+    {
+        // Per ADR-037 D2 IDomainEventDispatcher lives in Domain.Core
+        // alongside IDomainEvent (Vernon IDDD §8). Domain.Core stays
+        // dependency-free, which means the dispatcher's DispatchAsync
+        // signatures must only mention BCL types (Task,
+        // CancellationToken, IEnumerable<T>) and Domain.Core's own
+        // IDomainEvent. A regression that, say, adds an
+        // ILogger / IServiceProvider parameter would silently pull a
+        // framework dependency into Domain.Core.
+        var dispatcher = typeof(global::Dawning.AgentOS.Domain.Core.IDomainEventDispatcher);
+
+        var allowedAssemblies = new HashSet<string>(StringComparer.Ordinal)
+        {
+            DomainCoreName,
+            // BCL surfaces by various assembly identities depending on
+            // TFM; allow the System.* family wholesale below.
+        };
+
+        var disallowedReferences = new List<string>();
+        foreach (var method in dispatcher.GetMethods())
+        {
+            var typesInSignature = new List<Type> { method.ReturnType };
+            typesInSignature.AddRange(method.GetParameters().Select(p => p.ParameterType));
+
+            // Recursively flatten generic arguments so e.g.
+            // IEnumerable<IDomainEvent> validates IDomainEvent too.
+            var flattened = new List<Type>();
+            void Flatten(Type t)
+            {
+                flattened.Add(t);
+                if (t.IsGenericType)
+                {
+                    foreach (var arg in t.GetGenericArguments())
+                    {
+                        Flatten(arg);
+                    }
+                }
+            }
+            foreach (var t in typesInSignature)
+            {
+                Flatten(t);
+            }
+
+            foreach (var t in flattened)
+            {
+                var assemblyName = t.Assembly.GetName().Name ?? string.Empty;
+                var isBcl =
+                    assemblyName.StartsWith("System", StringComparison.Ordinal)
+                    || assemblyName.Equals("mscorlib", StringComparison.Ordinal)
+                    || assemblyName.Equals("netstandard", StringComparison.Ordinal);
+                if (isBcl || allowedAssemblies.Contains(assemblyName))
+                {
+                    continue;
+                }
+                disallowedReferences.Add(
+                    $"{method.Name} signature uses {t.FullName ?? t.Name} from {assemblyName}"
+                );
+            }
+        }
+
+        Assert.That(
+            disallowedReferences,
+            Is.Empty,
+            "IDomainEventDispatcher signatures must only reference BCL + Domain.Core types (ADR-037 D2)."
+        );
+    }
+
+    [Test]
     public void Application_DoesNotReferenceFrameworkAdapterPackages()
     {
         // Per ADR-022 the Application layer no longer references MediatR or
@@ -312,23 +495,67 @@ public sealed class LayeringTests
     }
 
     [Test]
-    public void Application_AbstractionsFolder_OnlyContainsInterfaces()
+    public void AbstractionsAssembly_OnlyContainsInterfacesAndDtos()
     {
-        // Per ADR-022 / ADR-024 Application/Abstractions/ holds ports
-        // (IClock, IRuntimeStartTimeProvider, IDomainEventDispatcher,
-        // IDbConnectionFactory, ISchemaInitializer, IAppDataPathProvider)
-        // implemented by Infra.* projects. A concrete class appearing
-        // anywhere under this namespace tree is the early signal that
-        // the layout discipline is slipping, and must fail the build.
-        var result = Types
-            .InAssembly(Application)
-            .That()
-            .ResideInNamespaceStartingWith("Dawning.AgentOS.Application.Abstractions")
-            .Should()
-            .BeInterfaces()
-            .GetResult();
+        // Per ADR-037 the Dawning.AgentOS.Abstractions assembly hosts:
+        // - 6 ports (interfaces): IClock, IRuntimeStartTimeProvider,
+        //   IAppDataPathProvider, IDbConnectionFactory, ISchemaInitializer,
+        //   ILlmProvider.
+        // - LLM DTOs (records / enums / static factory): LlmCompletion,
+        //   LlmRequest, LlmMessage, LlmStreamChunk, LlmRole,
+        //   LlmStreamChunkKind, LlmErrors.
+        // A concrete service class (instance-able non-record class with
+        // mutable state or behaviour) appearing in this assembly is the
+        // early signal that adapter or use-case logic is leaking back into
+        // Abstractions and must fail the build.
+        //
+        // NetArchTest doesn't natively model records or static classes, so
+        // the predicate is expressed in plain reflection: a type is allowed
+        // when it is an interface, an enum, a static class (sealed +
+        // abstract), or a record (sealed class with a synthesized <Clone>$
+        // instance method).
+        static bool IsAllowedAbstractionsType(Type t)
+        {
+            if (t.IsInterface || t.IsEnum)
+            {
+                return true;
+            }
 
-        Assert.That(result.IsSuccessful, Is.True, FormatFailures(result));
+            if (t.IsClass && t.IsSealed && t.IsAbstract)
+            {
+                // C# `static class` compiles to sealed + abstract.
+                return true;
+            }
+
+            if (t.IsClass && t.IsSealed)
+            {
+                // C# record compiles to a sealed class carrying a
+                // synthesized <Clone>$ instance method (any access).
+                var cloneMethod = t.GetMethod(
+                    "<Clone>$",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+                if (cloneMethod is not null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        var disallowed = Abstractions
+            .GetTypes()
+            .Where(IsAuthoredType)
+            .Where(t => !IsAllowedAbstractionsType(t))
+            .Select(t => t.FullName ?? t.Name)
+            .ToArray();
+
+        Assert.That(
+            disallowed,
+            Is.Empty,
+            "Abstractions must contain only interfaces, enums, records, or static classes (ADR-037)."
+        );
     }
 
     [Test]
@@ -483,37 +710,37 @@ public sealed class LayeringTests
     }
 
     [Test]
-    public void PersistencePorts_LiveInApplicationAbstractionsPersistenceNamespace()
+    public void PersistencePorts_LiveInAbstractionsPersistenceNamespace()
     {
-        // Per ADR-024 §1 the persistence ports
+        // Per ADR-024 §1 + ADR-037 the persistence ports
         // (IDbConnectionFactory, ISchemaInitializer) belong in
-        // Dawning.AgentOS.Application.Abstractions.Persistence; the
+        // Dawning.AgentOS.Abstractions.Persistence; the
         // hosting port (IAppDataPathProvider) belongs in
-        // Dawning.AgentOS.Application.Abstractions.Hosting. Anchoring
+        // Dawning.AgentOS.Abstractions.Hosting. Anchoring
         // these by reflection keeps the assertion stable across renames.
         var dbConnectionFactoryNamespace =
-            typeof(global::Dawning.AgentOS.Application.Abstractions.Persistence.IDbConnectionFactory).Namespace;
+            typeof(global::Dawning.AgentOS.Abstractions.Persistence.IDbConnectionFactory).Namespace;
         var schemaInitializerNamespace =
-            typeof(global::Dawning.AgentOS.Application.Abstractions.Persistence.ISchemaInitializer).Namespace;
+            typeof(global::Dawning.AgentOS.Abstractions.Persistence.ISchemaInitializer).Namespace;
         var appDataPathProviderNamespace =
-            typeof(global::Dawning.AgentOS.Application.Abstractions.Hosting.IAppDataPathProvider).Namespace;
+            typeof(global::Dawning.AgentOS.Abstractions.Hosting.IAppDataPathProvider).Namespace;
 
         Assert.Multiple(() =>
         {
             Assert.That(
                 dbConnectionFactoryNamespace,
-                Is.EqualTo("Dawning.AgentOS.Application.Abstractions.Persistence"),
-                "IDbConnectionFactory must live in Application.Abstractions.Persistence."
+                Is.EqualTo("Dawning.AgentOS.Abstractions.Persistence"),
+                "IDbConnectionFactory must live in Dawning.AgentOS.Abstractions.Persistence."
             );
             Assert.That(
                 schemaInitializerNamespace,
-                Is.EqualTo("Dawning.AgentOS.Application.Abstractions.Persistence"),
-                "ISchemaInitializer must live in Application.Abstractions.Persistence."
+                Is.EqualTo("Dawning.AgentOS.Abstractions.Persistence"),
+                "ISchemaInitializer must live in Dawning.AgentOS.Abstractions.Persistence."
             );
             Assert.That(
                 appDataPathProviderNamespace,
-                Is.EqualTo("Dawning.AgentOS.Application.Abstractions.Hosting"),
-                "IAppDataPathProvider must live in Application.Abstractions.Hosting."
+                Is.EqualTo("Dawning.AgentOS.Abstractions.Hosting"),
+                "IAppDataPathProvider must live in Dawning.AgentOS.Abstractions.Hosting."
             );
         });
     }

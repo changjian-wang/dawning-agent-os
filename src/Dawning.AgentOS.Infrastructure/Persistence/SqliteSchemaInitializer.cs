@@ -2,7 +2,7 @@ using System.Data.Common;
 using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Microsoft.Extensions.Logging;
 
 namespace Dawning.AgentOS.Infrastructure.Persistence;

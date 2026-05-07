@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Abstractions.Hosting;
+namespace Dawning.AgentOS.Abstractions.Hosting;
 
 /// <summary>
 /// Resolves the local filesystem path of the V0 SQLite database file.

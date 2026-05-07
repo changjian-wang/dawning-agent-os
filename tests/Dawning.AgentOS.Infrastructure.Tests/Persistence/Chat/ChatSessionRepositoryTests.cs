@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Infrastructure.Persistence;
 using Dawning.AgentOS.Infrastructure.Persistence.Repositories.Chat;

@@ -1,7 +1,6 @@
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Core;
 
-namespace Dawning.AgentOS.Application.Abstractions.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// Outbound port for chat-completion calls to an LLM provider. Per

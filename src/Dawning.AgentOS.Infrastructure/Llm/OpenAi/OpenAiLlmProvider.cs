@@ -1,5 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions.Llm;
-using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Domain.Core;
 using Dawning.AgentOS.Infrastructure.Llm.Common;
 using Dawning.AgentOS.Infrastructure.Options;

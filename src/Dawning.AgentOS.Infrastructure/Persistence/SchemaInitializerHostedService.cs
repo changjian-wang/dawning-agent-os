@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

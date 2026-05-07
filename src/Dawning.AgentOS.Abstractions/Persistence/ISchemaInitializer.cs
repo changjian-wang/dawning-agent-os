@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Abstractions.Persistence;
+namespace Dawning.AgentOS.Abstractions.Persistence;
 
 /// <summary>
 /// Idempotent schema bootstrapper. Adapters implementing this port live

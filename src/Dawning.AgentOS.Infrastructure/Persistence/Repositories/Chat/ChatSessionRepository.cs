@@ -1,5 +1,5 @@
 using System.Globalization;
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Infrastructure.Persistence.Entities.Chat;
 using Dawning.ORM.Dapper;

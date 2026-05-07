@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions;
+using Dawning.AgentOS.Abstractions;
 using Dawning.AgentOS.Infrastructure.Options;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

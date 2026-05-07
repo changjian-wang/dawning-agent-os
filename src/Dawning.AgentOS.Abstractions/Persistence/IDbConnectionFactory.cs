@@ -1,6 +1,6 @@
 using System.Data.Common;
 
-namespace Dawning.AgentOS.Application.Abstractions.Persistence;
+namespace Dawning.AgentOS.Abstractions.Persistence;
 
 /// <summary>
 /// Opens an ADO.NET connection to the V0 persistence store. Adapters

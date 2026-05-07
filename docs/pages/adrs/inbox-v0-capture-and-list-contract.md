@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/mvp-first-slice-chat-inbox-read-side.md, pages/adrs/mvp-input-boundary-no-default-folder-reading.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/sqlite-dapper-bootstrap-and-schema-init.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/adrs/desktop-process-supervisor-electron-dotnet-child.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/mvp-first-slice-chat-inbox-read-side.md, pages/adrs/mvp-input-boundary-no-default-folder-reading.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/sqlite-dapper-bootstrap-and-schema-init.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/adrs/desktop-process-supervisor-electron-dotnet-child.md, pages/adrs/port-and-cross-layer-contract-assembly-split.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-05-02

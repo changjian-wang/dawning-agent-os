@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// A single chat message in an <see cref="LlmRequest"/>. Per ADR-028

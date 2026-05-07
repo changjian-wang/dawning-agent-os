@@ -1,7 +1,7 @@
 using System.Data.Common;
-using Dawning.AgentOS.Application.Abstractions;
-using Dawning.AgentOS.Application.Abstractions.Hosting;
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions;
+using Dawning.AgentOS.Abstractions.Hosting;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Application.Interfaces;
 using Dawning.AgentOS.Application.Services;
 using Microsoft.Data.Sqlite;

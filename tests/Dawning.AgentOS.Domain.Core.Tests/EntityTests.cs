@@ -20,12 +20,8 @@ public sealed class EntityTests
             // Reflection only because protected setters are not visible from outside;
             // production rehydration calls the protected setter from within the
             // derived class, not via reflection.
-            typeof(Entity<Guid>)
-                .GetProperty(nameof(Id))!
-                .SetValue(e, id);
-            typeof(Entity<Guid>)
-                .GetProperty(nameof(CreatedAt))!
-                .SetValue(e, createdAt);
+            typeof(Entity<Guid>).GetProperty(nameof(Id))!.SetValue(e, id);
+            typeof(Entity<Guid>).GetProperty(nameof(CreatedAt))!.SetValue(e, createdAt);
             return e;
         }
     }
@@ -56,7 +52,8 @@ public sealed class EntityTests
     {
         Assert.That(
             () => new TestEntity(Guid.Empty, DateTimeOffset.UtcNow),
-            Throws.ArgumentException.With.Property("ParamName").EqualTo("id"));
+            Throws.ArgumentException.With.Property("ParamName").EqualTo("id")
+        );
     }
 
     [Test]
@@ -153,10 +150,10 @@ public sealed class EntityTests
     public void DefaultCtor_IsAccessibleFromDerivedOnly()
     {
         // Rehydrate path uses parameterless ctor; it must not be public.
-        var ctor = typeof(Entity<Guid>)
-            .GetConstructor(
-                BindingFlags.Instance | BindingFlags.NonPublic,
-                Type.EmptyTypes);
+        var ctor = typeof(Entity<Guid>).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            Type.EmptyTypes
+        );
 
         Assert.That(ctor, Is.Not.Null);
         Assert.That(ctor!.IsFamily, Is.True, "Parameterless ctor must be protected.");

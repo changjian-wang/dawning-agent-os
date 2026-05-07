@@ -45,11 +45,7 @@ public static class InboxErrors
     /// <param name="itemId">The id that produced the miss; included in the message for diagnostics.</param>
     /// <returns>A non-field-level error tagged with <see cref="ItemNotFoundCode"/>.</returns>
     public static DomainError ItemNotFound(Guid itemId) =>
-        new(
-            Code: ItemNotFoundCode,
-            Message: $"Inbox item '{itemId}' not found.",
-            Field: null
-        );
+        new(Code: ItemNotFoundCode, Message: $"Inbox item '{itemId}' not found.", Field: null);
 
     /// <summary>
     /// Builds an <see cref="DomainError"/> indicating that the LLM

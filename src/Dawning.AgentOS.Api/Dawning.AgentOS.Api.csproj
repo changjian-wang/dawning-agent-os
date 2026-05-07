@@ -8,10 +8,10 @@
     </PropertyGroup>
 
     <!--
-      The API host (per ADR-017 + ADR-023). Composition root only; consumes
-      the Application facade through services.AddApplication() and never
-      references Domain / Domain.Services / Domain.Core / Infrastructure
-      directly.
+      The API host (per ADR-017 + ADR-023 + ADR-037). Composition root only;
+      consumes the Application facade through services.AddApplication(),
+      consumes ports + LLM DTOs through the Abstractions assembly, and
+      never references Domain / Domain.Services / Domain.Core directly.
 
       Internal layout is fixed by ADR-023 §1:
         Endpoints/<Feature>/<Feature>Endpoints.cs    static class + MapXxx
@@ -25,6 +25,7 @@
       are tracked in the ADR's adr_revisit_when frontmatter.
     -->
     <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Abstractions\Dawning.AgentOS.Abstractions.csproj" />
         <ProjectReference Include="..\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />
         <ProjectReference Include="..\Dawning.AgentOS.Infrastructure\Dawning.AgentOS.Infrastructure.csproj" />
     </ItemGroup>

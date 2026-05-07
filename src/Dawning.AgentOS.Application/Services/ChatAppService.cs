@@ -1,11 +1,10 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Dawning.AgentOS.Application.Abstractions;
-using Dawning.AgentOS.Application.Abstractions.Llm;
+using Dawning.AgentOS.Abstractions;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Chat;
 using Dawning.AgentOS.Application.Interfaces;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Domain.Core;
 

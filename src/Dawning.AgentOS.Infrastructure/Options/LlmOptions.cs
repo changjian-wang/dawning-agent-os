@@ -61,18 +61,12 @@ public sealed class LlmOptions
 public sealed class LlmProvidersOptions
 {
     /// <summary>OpenAI provider settings.</summary>
-    public LlmProviderOptions OpenAI { get; set; } = new()
-    {
-        BaseUrl = "https://api.openai.com/v1",
-        Model = "gpt-4o-mini",
-    };
+    public LlmProviderOptions OpenAI { get; set; } =
+        new() { BaseUrl = "https://api.openai.com/v1", Model = "gpt-4o-mini" };
 
     /// <summary>DeepSeek provider settings.</summary>
-    public LlmProviderOptions DeepSeek { get; set; } = new()
-    {
-        BaseUrl = "https://api.deepseek.com",
-        Model = "deepseek-chat",
-    };
+    public LlmProviderOptions DeepSeek { get; set; } =
+        new() { BaseUrl = "https://api.deepseek.com", Model = "deepseek-chat" };
 
     /// <summary>Azure OpenAI provider settings.</summary>
     public LlmAzureOpenAiProviderOptions AzureOpenAI { get; set; } = new();

@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Infrastructure.Llm.AzureOpenAi;
 using Dawning.AgentOS.Infrastructure.Options;
 using Microsoft.Extensions.Options;
@@ -48,24 +48,23 @@ public class AzureOpenAiLlmProviderTests
     [Test]
     public async Task CompleteAsync_UsesApiKeyHeader()
     {
-        var (sut, factory, handler) = BuildProviderWithHandler(
-            HttpStatusCode.OK,
-            BuildHelloBody()
-        );
+        var (sut, factory, handler) = BuildProviderWithHandler(HttpStatusCode.OK, BuildHelloBody());
 
         await sut.CompleteAsync(BuildPingRequest(), CancellationToken.None);
 
         // Verify api-key header was sent (not Bearer)
-        handler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(msg =>
-                msg.Headers.Contains("api-key")
-                && msg.Headers.GetValues("api-key").First() == TestApiKey
-                && !msg.Headers.Contains("Authorization")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        handler
+            .Protected()
+            .Verify(
+                "SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(msg =>
+                    msg.Headers.Contains("api-key")
+                    && msg.Headers.GetValues("api-key").First() == TestApiKey
+                    && !msg.Headers.Contains("Authorization")
+                ),
+                ItExpr.IsAny<CancellationToken>()
+            );
     }
 
     [Test]
@@ -76,14 +75,16 @@ public class AzureOpenAiLlmProviderTests
         await sut.CompleteAsync(BuildPingRequest(), CancellationToken.None);
 
         // Verify URL path contains deployment ID
-        handler.Protected().Verify(
-            "SendAsync",
-            Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(msg =>
-                msg.RequestUri!.ToString().Contains($"/openai/deployments/{TestDeploymentId}")
-            ),
-            ItExpr.IsAny<CancellationToken>()
-        );
+        handler
+            .Protected()
+            .Verify(
+                "SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(msg =>
+                    msg.RequestUri!.ToString().Contains($"/openai/deployments/{TestDeploymentId}")
+                ),
+                ItExpr.IsAny<CancellationToken>()
+            );
     }
 
     [Test]
@@ -180,7 +181,12 @@ public class AzureOpenAiLlmProviderTests
     // -------- helpers --------
 
     private static LlmRequest BuildPingRequest() =>
-        new(Messages: [new LlmMessage(LlmRole.User, "ping")], Model: null, Temperature: null, MaxTokens: 8);
+        new(
+            Messages: [new LlmMessage(LlmRole.User, "ping")],
+            Model: null,
+            Temperature: null,
+            MaxTokens: 8
+        );
 
     private static string BuildHelloBody() =>
         "{ \"model\": \"gpt-4\", "
@@ -195,18 +201,27 @@ public class AzureOpenAiLlmProviderTests
         string apiVersion = ""
     )
     {
-        var (sut, _, _) = BuildProviderWithHandler(status, responseBody, apiKey, deploymentId, apiVersion);
+        var (sut, _, _) = BuildProviderWithHandler(
+            status,
+            responseBody,
+            apiKey,
+            deploymentId,
+            apiVersion
+        );
         return sut;
     }
 
-    private static (AzureOpenAiLlmProvider Provider, Mock<IHttpClientFactory> Factory, Mock<HttpMessageHandler> Handler)
-        BuildProviderWithHandler(
-            HttpStatusCode status,
-            string responseBody,
-            string apiKey = TestApiKey,
-            string deploymentId = TestDeploymentId,
-            string apiVersion = ""
-        )
+    private static (
+        AzureOpenAiLlmProvider Provider,
+        Mock<IHttpClientFactory> Factory,
+        Mock<HttpMessageHandler> Handler
+    ) BuildProviderWithHandler(
+        HttpStatusCode status,
+        string responseBody,
+        string apiKey = TestApiKey,
+        string deploymentId = TestDeploymentId,
+        string apiVersion = ""
+    )
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handler
@@ -223,10 +238,7 @@ public class AzureOpenAiLlmProviderTests
                 }
             );
 
-        var httpClient = new HttpClient(handler.Object)
-        {
-            BaseAddress = new Uri(TestEndpoint),
-        };
+        var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri(TestEndpoint) };
         var factory = new Mock<IHttpClientFactory>();
         factory
             .Setup(f => f.CreateClient(AzureOpenAiLlmProvider.HttpClientName))

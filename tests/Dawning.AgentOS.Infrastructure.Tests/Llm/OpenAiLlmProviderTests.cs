@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Infrastructure.Llm.OpenAi;
 using Dawning.AgentOS.Infrastructure.Options;
 using Microsoft.Extensions.Options;
@@ -125,8 +125,8 @@ public class OpenAiLlmProviderTests
         // the base class, which is what ADR-028 §决策 H1 requires:
         // "the only failure mode allowed to propagate is
         // OperationCanceledException".
-        Assert.CatchAsync<OperationCanceledException>(
-            async () => await sut.CompleteAsync(BuildPingRequest(), cts.Token)
+        Assert.CatchAsync<OperationCanceledException>(async () =>
+            await sut.CompleteAsync(BuildPingRequest(), cts.Token)
         );
     }
 
@@ -152,7 +152,12 @@ public class OpenAiLlmProviderTests
     // -------- helpers --------
 
     private static LlmRequest BuildPingRequest() =>
-        new(Messages: [new LlmMessage(LlmRole.User, "ping")], Model: null, Temperature: null, MaxTokens: 8);
+        new(
+            Messages: [new LlmMessage(LlmRole.User, "ping")],
+            Model: null,
+            Temperature: null,
+            MaxTokens: 8
+        );
 
     private static OpenAiLlmProvider BuildProvider(
         HttpStatusCode status,
@@ -191,9 +196,7 @@ public class OpenAiLlmProviderTests
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri(TestBaseUrl) };
         var factory = new Mock<IHttpClientFactory>();
-        factory
-            .Setup(f => f.CreateClient(OpenAiLlmProvider.HttpClientName))
-            .Returns(httpClient);
+        factory.Setup(f => f.CreateClient(OpenAiLlmProvider.HttpClientName)).Returns(httpClient);
 
         var monitor = new Mock<IOptionsMonitor<LlmOptions>>();
         monitor

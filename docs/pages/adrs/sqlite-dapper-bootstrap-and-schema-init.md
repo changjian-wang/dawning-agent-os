@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/engineering-skeleton-v0.md, pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/adrs/architecture-test-assertion-strategy.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/engineering-skeleton-v0.md, pages/adrs/backend-architecture-equinox-reference.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/adrs/architecture-test-assertion-strategy.md, pages/adrs/port-and-cross-layer-contract-assembly-split.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-05-01

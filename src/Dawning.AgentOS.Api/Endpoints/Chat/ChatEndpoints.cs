@@ -1,9 +1,9 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Api.Results;
 using Dawning.AgentOS.Application.Chat;
 using Dawning.AgentOS.Application.Interfaces;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Core;
 using Microsoft.AspNetCore.Http;
 

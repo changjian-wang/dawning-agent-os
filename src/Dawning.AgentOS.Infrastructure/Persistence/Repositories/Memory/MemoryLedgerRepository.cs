@@ -1,5 +1,5 @@
 using System.Globalization;
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Memory;
 using Dawning.AgentOS.Infrastructure.Persistence.Entities.Memory;
 using Dawning.ORM.Dapper;

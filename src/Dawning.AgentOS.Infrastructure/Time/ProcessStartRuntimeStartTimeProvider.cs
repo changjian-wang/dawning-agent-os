@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions;
+using Dawning.AgentOS.Abstractions;
 
 namespace Dawning.AgentOS.Infrastructure.Time;
 

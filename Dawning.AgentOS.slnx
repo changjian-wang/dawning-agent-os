@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Dawning.AgentOS.Abstractions/Dawning.AgentOS.Abstractions.csproj" />
     <Project Path="src/Dawning.AgentOS.Api/Dawning.AgentOS.Api.csproj" />
     <Project Path="src/Dawning.AgentOS.Application/Dawning.AgentOS.Application.csproj" />
     <Project Path="src/Dawning.AgentOS.Domain.Core/Dawning.AgentOS.Domain.Core.csproj" />

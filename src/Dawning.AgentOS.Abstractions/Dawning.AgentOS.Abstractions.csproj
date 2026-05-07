@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>Dawning.AgentOS.Abstractions</RootNamespace>
+        <AssemblyName>Dawning.AgentOS.Abstractions</AssemblyName>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!--
+      Per ADR-037, this project hosts cross-layer technical contracts:
+      - 6 ports (IClock, IRuntimeStartTimeProvider, IAppDataPathProvider,
+        IDbConnectionFactory, ISchemaInitializer, ILlmProvider)
+      - 7 LLM DTOs (LlmCompletion, LlmErrors, LlmMessage, LlmRequest,
+        LlmRole, LlmStreamChunk, LlmStreamChunkKind)
+
+      Single allowed ProjectReference: Domain.Core (shared kernel for
+      Result<T> and DomainError). Forbidden: Domain, Domain.Services,
+      Application, Infrastructure, Api. Forbidden NuGet adapters:
+      Microsoft.Data.Sqlite / Dapper / Dawning.ORM.Dapper /
+      Microsoft.AspNetCore.* / MediatR. Enforced by architecture tests
+      Abstractions_OnlyReferencesDomainCoreSharedKernel and
+      Abstractions_DoesNotReferenceFrameworkAdapterPackages.
+
+      IDomainEventDispatcher does NOT live here; it sits in Domain.Core
+      next to IDomainEvent (per ADR-037 D2 / Vernon IDDD §8).
+    -->
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dawning.AgentOS.Domain.Core\Dawning.AgentOS.Domain.Core.csproj" />
+    </ItemGroup>
+</Project>

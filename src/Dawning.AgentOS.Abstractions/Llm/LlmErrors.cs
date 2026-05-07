@@ -1,6 +1,6 @@
 using Dawning.AgentOS.Domain.Core;
 
-namespace Dawning.AgentOS.Application.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// Stable <see cref="DomainError"/> factory for <see cref="ILlmProvider"/>

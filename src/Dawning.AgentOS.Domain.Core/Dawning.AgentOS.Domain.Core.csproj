@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>Dawning.AgentOS.Domain.Core</RootNamespace>
@@ -13,5 +12,4 @@
       is a plain marker, dispatch is handled by the self-built
       IDomainEventDispatcher port (declared in Application/Abstractions).
     -->
-
 </Project>

@@ -34,15 +34,16 @@ public class Result
         {
             throw new ArgumentException(
                 "A failure result must contain at least one error.",
-                nameof(errors));
+                nameof(errors)
+            );
         }
 
         return new Result(false, errors.ToImmutableArray());
     }
 
     /// <summary>Creates a failed result from a single error code and message.</summary>
-    public static Result Failure(string code, string message, string? field = null)
-        => Failure(new DomainError(code, message, field));
+    public static Result Failure(string code, string message, string? field = null) =>
+        Failure(new DomainError(code, message, field));
 
     private protected Result(bool isSuccess, ImmutableArray<DomainError> errors)
     {
@@ -71,7 +72,8 @@ public sealed class Result<T> : Result
             if (!IsSuccess)
             {
                 throw new InvalidOperationException(
-                    "Cannot access Value of a failed result. Inspect Errors instead.");
+                    "Cannot access Value of a failed result. Inspect Errors instead."
+                );
             }
 
             return _value!;
@@ -89,15 +91,16 @@ public sealed class Result<T> : Result
         {
             throw new ArgumentException(
                 "A failure result must contain at least one error.",
-                nameof(errors));
+                nameof(errors)
+            );
         }
 
         return new Result<T>(false, default, errors.ToImmutableArray());
     }
 
     /// <summary>Creates a failed result from a single error code and message.</summary>
-    public static new Result<T> Failure(string code, string message, string? field = null)
-        => Failure(new DomainError(code, message, field));
+    public static new Result<T> Failure(string code, string message, string? field = null) =>
+        Failure(new DomainError(code, message, field));
 
     private Result(bool isSuccess, T? value, ImmutableArray<DomainError> errors)
         : base(isSuccess, errors)

@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// The successful outcome of an <see cref="ILlmProvider.CompleteAsync"/>

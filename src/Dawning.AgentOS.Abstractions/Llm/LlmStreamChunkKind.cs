@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// Discriminator for <see cref="LlmStreamChunk"/>. Per ADR-032 §决策 F1

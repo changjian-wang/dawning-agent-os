@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// Input for a single non-streaming chat completion call. Per ADR-028

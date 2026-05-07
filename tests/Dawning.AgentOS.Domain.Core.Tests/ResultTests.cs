@@ -55,15 +55,14 @@ public sealed class ResultTests
     {
         Assert.That(
             () => Result.Failure(),
-            Throws.ArgumentException.With.Property("ParamName").EqualTo("errors"));
+            Throws.ArgumentException.With.Property("ParamName").EqualTo("errors")
+        );
     }
 
     [Test]
     public void Failure_NullErrorsArray_Throws()
     {
-        Assert.That(
-            () => Result.Failure((DomainError[])null!),
-            Throws.ArgumentNullException);
+        Assert.That(() => Result.Failure((DomainError[])null!), Throws.ArgumentNullException);
     }
 }
 
@@ -88,9 +87,7 @@ public sealed class ResultOfTTests
     {
         var sut = Result<int>.Failure("x", "y");
 
-        Assert.That(
-            () => _ = sut.Value,
-            Throws.InvalidOperationException);
+        Assert.That(() => _ = sut.Value, Throws.InvalidOperationException);
     }
 
     [Test]
@@ -115,7 +112,8 @@ public sealed class ResultOfTTests
     {
         Assert.That(
             () => Result<int>.Failure(),
-            Throws.ArgumentException.With.Property("ParamName").EqualTo("errors"));
+            Throws.ArgumentException.With.Property("ParamName").EqualTo("errors")
+        );
     }
 
     [Test]

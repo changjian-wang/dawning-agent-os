@@ -30,8 +30,5 @@ public interface IInboxSummaryAppService
     /// → 400). <see cref="OperationCanceledException"/> from the LLM
     /// call is propagated, not wrapped.
     /// </returns>
-    Task<Result<InboxItemSummary>> SummarizeAsync(
-        Guid itemId,
-        CancellationToken cancellationToken
-    );
+    Task<Result<InboxItemSummary>> SummarizeAsync(Guid itemId, CancellationToken cancellationToken);
 }

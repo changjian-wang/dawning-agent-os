@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Abstractions;
+namespace Dawning.AgentOS.Abstractions;
 
 /// <summary>
 /// Reports the moment the local backend process started. Used to compute

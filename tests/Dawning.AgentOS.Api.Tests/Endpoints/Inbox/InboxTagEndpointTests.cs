@@ -1,8 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Api.Tests.Helpers;
-using Dawning.AgentOS.Application.Abstractions.Llm;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Core;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -77,8 +76,7 @@ public sealed class InboxTagEndpointTests
     [Test]
     public async Task Tag_Returns200WithTags_WhenLlmSucceeds()
     {
-        _llm
-            .Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+        _llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 Result<LlmCompletion>.Success(
                     new LlmCompletion(
@@ -92,10 +90,7 @@ public sealed class InboxTagEndpointTests
             );
 
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var capturedId = await CaptureItemAsync(client, "一篇关于人工智能学习方法的文章");
 
@@ -122,10 +117,7 @@ public sealed class InboxTagEndpointTests
     public async Task Tag_Returns404_WhenInboxItemMissing()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var unknownId = Guid.CreateVersion7(DateTimeOffset.UtcNow);
         var response = await client.PostAsync(
@@ -146,8 +138,7 @@ public sealed class InboxTagEndpointTests
     [Test]
     public async Task Tag_Returns422_WhenLlmOutputCannotBeParsed()
     {
-        _llm
-            .Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+        _llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
                 Result<LlmCompletion>.Success(
                     new LlmCompletion(
@@ -161,10 +152,7 @@ public sealed class InboxTagEndpointTests
             );
 
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var capturedId = await CaptureItemAsync(client, "anything");
 
@@ -181,19 +169,13 @@ public sealed class InboxTagEndpointTests
     [Test]
     public async Task Tag_Returns502_WhenLlmUpstreamFails()
     {
-        _llm
-            .Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
+        _llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
-                Result<LlmCompletion>.Failure(
-                    LlmErrors.UpstreamUnavailable("upstream 503")
-                )
+                Result<LlmCompletion>.Failure(LlmErrors.UpstreamUnavailable("upstream 503"))
             );
 
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(
-            "X-Startup-Token",
-            DawningAgentOsApiFactory.ExpectedToken
-        );
+        client.DefaultRequestHeaders.Add("X-Startup-Token", DawningAgentOsApiFactory.ExpectedToken);
 
         var capturedId = await CaptureItemAsync(client, "anything");
 

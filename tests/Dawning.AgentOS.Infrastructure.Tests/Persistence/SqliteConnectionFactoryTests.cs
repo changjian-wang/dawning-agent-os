@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions.Hosting;
+using Dawning.AgentOS.Abstractions.Hosting;
 using Dawning.AgentOS.Infrastructure.Options;
 using Dawning.AgentOS.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;

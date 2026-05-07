@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions;
+using Dawning.AgentOS.Abstractions;
 using Dawning.AgentOS.Application.Interfaces;
 using Dawning.AgentOS.Application.Memory;
 using Dawning.AgentOS.Domain.Core;

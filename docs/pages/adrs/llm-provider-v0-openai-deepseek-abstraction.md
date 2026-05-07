@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/inbox-v0-capture-and-list-contract.md, pages/adrs/abstract-instruction-fallback.md, pages/adrs/options-over-elaboration.md, pages/adrs/important-action-levels-and-confirmation.md, pages/rules/plan-first-implementation.md]
+related: [pages/adrs/mvp-desktop-stack-electron-aspnetcore.md, pages/adrs/api-entry-facade-and-v0-endpoints.md, pages/adrs/no-mediator-self-domain-event-dispatcher.md, pages/adrs/inbox-v0-capture-and-list-contract.md, pages/adrs/abstract-instruction-fallback.md, pages/adrs/options-over-elaboration.md, pages/adrs/important-action-levels-and-confirmation.md, pages/adrs/port-and-cross-layer-contract-assembly-split.md, pages/rules/plan-first-implementation.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-05-03

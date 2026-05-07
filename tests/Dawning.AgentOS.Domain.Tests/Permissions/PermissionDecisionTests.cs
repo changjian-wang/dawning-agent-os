@@ -12,14 +12,16 @@ public sealed class PermissionDecisionTests
         Assert.That(PermissionDecision.Allowed.Instance, Is.Not.Null);
 
         var publicCtors = typeof(PermissionDecision.Allowed).GetConstructors(
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+        );
 
         // Records auto-generate a public copy ctor; that's expected. The
         // parameterless ctor must remain non-public so callers cannot
         // bypass the singleton.
         var declaredParameterlessPublic = System.Array.FindAll(
             publicCtors,
-            c => c.GetParameters().Length == 0);
+            c => c.GetParameters().Length == 0
+        );
 
         Assert.That(declaredParameterlessPublic, Is.Empty);
     }
@@ -27,7 +29,9 @@ public sealed class PermissionDecisionTests
     [Test]
     public void RequiresConfirmation_CarriesReason()
     {
-        var decision = new PermissionDecision.RequiresConfirmation("editing this file is irreversible");
+        var decision = new PermissionDecision.RequiresConfirmation(
+            "editing this file is irreversible"
+        );
 
         Assert.That(decision.Reason, Is.EqualTo("editing this file is irreversible"));
     }
@@ -39,7 +43,8 @@ public sealed class PermissionDecisionTests
     {
         Assert.That(
             () => new PermissionDecision.RequiresConfirmation(reason!),
-            Throws.ArgumentException);
+            Throws.ArgumentException
+        );
     }
 
     [Test]
@@ -55,9 +60,7 @@ public sealed class PermissionDecisionTests
     [TestCase("   ")]
     public void Denied_NullOrWhitespaceReason_Throws(string? reason)
     {
-        Assert.That(
-            () => new PermissionDecision.Denied(reason!),
-            Throws.ArgumentException);
+        Assert.That(() => new PermissionDecision.Denied(reason!), Throws.ArgumentException);
     }
 
     [Test]
@@ -100,14 +103,16 @@ public sealed class PermissionDecisionTests
         // The base ctor is private; only the three nested records can extend.
         var ctors = typeof(PermissionDecision).GetConstructors(
             System.Reflection.BindingFlags.Instance
-            | System.Reflection.BindingFlags.Public
-            | System.Reflection.BindingFlags.NonPublic);
+                | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic
+        );
 
         // Records auto-generate a protected copy ctor; the only declared
         // primary / parameterless ctor must be private.
         var declaredParameterlessCtors = System.Array.FindAll(
             ctors,
-            c => c.GetParameters().Length == 0);
+            c => c.GetParameters().Length == 0
+        );
 
         Assert.That(declaredParameterlessCtors, Has.Length.EqualTo(1));
         Assert.That(declaredParameterlessCtors[0].IsPrivate, Is.True);

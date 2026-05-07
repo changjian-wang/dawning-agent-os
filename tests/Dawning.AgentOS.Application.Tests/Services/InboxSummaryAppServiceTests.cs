@@ -1,6 +1,5 @@
-using Dawning.AgentOS.Application.Abstractions.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Inbox;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Application.Services;
 using Dawning.AgentOS.Domain.Core;
 using Dawning.AgentOS.Domain.Inbox;
@@ -50,8 +49,7 @@ public sealed class InboxSummaryAppServiceTests
     {
         var item = InboxItem.Capture("用户分享了一篇文章", "chat", SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.SetupGet(p => p.ProviderName).Returns("OpenAI");
@@ -110,8 +108,7 @@ public sealed class InboxSummaryAppServiceTests
     {
         var item = InboxItem.Capture("the actual material", "chat", SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         LlmRequest? captured = null;
         var llm = new Mock<ILlmProvider>();
@@ -137,7 +134,10 @@ public sealed class InboxSummaryAppServiceTests
         {
             Assert.That(captured!.Messages, Has.Count.EqualTo(2));
             Assert.That(captured.Messages[0].Role, Is.EqualTo(LlmRole.System));
-            Assert.That(captured.Messages[0].Content, Is.EqualTo(InboxSummaryAppService.SystemPrompt));
+            Assert.That(
+                captured.Messages[0].Content,
+                Is.EqualTo(InboxSummaryAppService.SystemPrompt)
+            );
             Assert.That(captured.Messages[1].Role, Is.EqualTo(LlmRole.User));
             Assert.That(captured.Messages[1].Content, Is.EqualTo("the actual material"));
             Assert.That(captured.Temperature, Is.EqualTo(InboxSummaryAppService.Temperature));
@@ -175,8 +175,7 @@ public sealed class InboxSummaryAppServiceTests
     {
         var item = InboxItem.Capture("x", null, SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))
@@ -184,8 +183,8 @@ public sealed class InboxSummaryAppServiceTests
 
         var sut = new InboxSummaryAppService(repo.Object, llm.Object);
 
-        Assert.CatchAsync<OperationCanceledException>(
-            () => sut.SummarizeAsync(item.Id, CancellationToken.None)
+        Assert.CatchAsync<OperationCanceledException>(() =>
+            sut.SummarizeAsync(item.Id, CancellationToken.None)
         );
     }
 
@@ -206,8 +205,7 @@ public sealed class InboxSummaryAppServiceTests
     {
         var item = InboxItem.Capture("hello", null, SampleCapturedAt);
         var repo = new Mock<IInboxRepository>();
-        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(item);
+        repo.Setup(r => r.GetByIdAsync(item.Id, It.IsAny<CancellationToken>())).ReturnsAsync(item);
 
         var llm = new Mock<ILlmProvider>();
         llm.Setup(p => p.CompleteAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>()))

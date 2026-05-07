@@ -1,5 +1,5 @@
 using System.Globalization;
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Inbox;
 using Dawning.AgentOS.Infrastructure.Persistence.Entities.Inbox;
 using Dawning.ORM.Dapper;

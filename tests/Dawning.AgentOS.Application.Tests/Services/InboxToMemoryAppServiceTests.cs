@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions;
+using Dawning.AgentOS.Abstractions;
 using Dawning.AgentOS.Application.Inbox;
 using Dawning.AgentOS.Application.Services;
 using Dawning.AgentOS.Domain.Inbox;
@@ -169,7 +169,8 @@ public sealed class InboxToMemoryAppServiceTests
             .Returns(Task.CompletedTask);
 
         var clock = new Mock<IClock>();
-        clock.SetupSequence(c => c.UtcNow)
+        clock
+            .SetupSequence(c => c.UtcNow)
             .Returns(SamplePromotedAt)
             .Returns(SamplePromotedAt.AddMinutes(1));
 

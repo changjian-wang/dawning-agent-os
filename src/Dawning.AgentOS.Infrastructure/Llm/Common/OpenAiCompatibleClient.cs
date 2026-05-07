@@ -5,8 +5,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Dawning.AgentOS.Application.Abstractions.Llm;
-using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Domain.Core;
 
 namespace Dawning.AgentOS.Infrastructure.Llm.Common;

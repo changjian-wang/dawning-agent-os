@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Infrastructure.Llm.DeepSeek;
 using Dawning.AgentOS.Infrastructure.Options;
 using Microsoft.Extensions.Options;
@@ -77,7 +77,12 @@ public class DeepSeekLlmProviderTests
     // -------- helpers --------
 
     private static LlmRequest BuildPingRequest() =>
-        new(Messages: [new LlmMessage(LlmRole.User, "ping")], Model: null, Temperature: null, MaxTokens: 8);
+        new(
+            Messages: [new LlmMessage(LlmRole.User, "ping")],
+            Model: null,
+            Temperature: null,
+            MaxTokens: 8
+        );
 
     private static string BuildHelloBody() =>
         "{ \"model\": \"deepseek-chat\", "
@@ -90,10 +95,10 @@ public class DeepSeekLlmProviderTests
         return sut;
     }
 
-    private static (DeepSeekLlmProvider Provider, Mock<IHttpClientFactory> Factory) BuildProviderAndFactory(
-        HttpStatusCode status,
-        string responseBody
-    )
+    private static (
+        DeepSeekLlmProvider Provider,
+        Mock<IHttpClientFactory> Factory
+    ) BuildProviderAndFactory(HttpStatusCode status, string responseBody)
     {
         var handler = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handler
@@ -112,9 +117,7 @@ public class DeepSeekLlmProviderTests
 
         var httpClient = new HttpClient(handler.Object) { BaseAddress = new Uri(TestBaseUrl) };
         var factory = new Mock<IHttpClientFactory>();
-        factory
-            .Setup(f => f.CreateClient(DeepSeekLlmProvider.HttpClientName))
-            .Returns(httpClient);
+        factory.Setup(f => f.CreateClient(DeepSeekLlmProvider.HttpClientName)).Returns(httpClient);
 
         var monitor = new Mock<IOptionsMonitor<LlmOptions>>();
         monitor

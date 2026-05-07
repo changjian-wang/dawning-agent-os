@@ -1,9 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
-using Dawning.AgentOS.Application.Abstractions.Llm;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Inbox;
 using Dawning.AgentOS.Application.Interfaces;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Domain.Core;
 using Dawning.AgentOS.Domain.Inbox;
 
@@ -110,9 +109,7 @@ public sealed class InboxTaggingAppService(IInboxRepository repository, ILlmProv
         CancellationToken cancellationToken
     )
     {
-        var item = await _repository
-            .GetByIdAsync(itemId, cancellationToken)
-            .ConfigureAwait(false);
+        var item = await _repository.GetByIdAsync(itemId, cancellationToken).ConfigureAwait(false);
 
         if (item is null)
         {

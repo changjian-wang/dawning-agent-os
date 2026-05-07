@@ -22,7 +22,8 @@ public sealed class ActionKindTests
     {
         Assert.That(
             () => new ActionKind(code!),
-            Throws.ArgumentException.With.Property("ParamName").EqualTo("code"));
+            Throws.ArgumentException.With.Property("ParamName").EqualTo("code")
+        );
     }
 
     [Test]

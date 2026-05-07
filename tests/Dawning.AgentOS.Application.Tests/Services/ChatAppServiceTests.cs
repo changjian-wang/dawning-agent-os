@@ -1,7 +1,6 @@
-using Dawning.AgentOS.Application.Abstractions;
-using Dawning.AgentOS.Application.Abstractions.Llm;
+using Dawning.AgentOS.Abstractions;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Application.Chat;
-using Dawning.AgentOS.Application.Llm;
 using Dawning.AgentOS.Application.Services;
 using Dawning.AgentOS.Domain.Chat;
 using Moq;

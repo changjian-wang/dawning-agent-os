@@ -1,4 +1,4 @@
-using Dawning.AgentOS.Application.Abstractions.Persistence;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;

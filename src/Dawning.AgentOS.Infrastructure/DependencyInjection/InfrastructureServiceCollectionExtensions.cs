@@ -1,8 +1,7 @@
-using Dawning.AgentOS.Application.Abstractions;
-using Dawning.AgentOS.Application.Abstractions.Hosting;
-using Dawning.AgentOS.Application.Abstractions.Llm;
-using Dawning.AgentOS.Application.Abstractions.Persistence;
-using Dawning.AgentOS.Application.Llm;
+using Dawning.AgentOS.Abstractions;
+using Dawning.AgentOS.Abstractions.Hosting;
+using Dawning.AgentOS.Abstractions.Llm;
+using Dawning.AgentOS.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Chat;
 using Dawning.AgentOS.Domain.Inbox;
 using Dawning.AgentOS.Domain.Memory;

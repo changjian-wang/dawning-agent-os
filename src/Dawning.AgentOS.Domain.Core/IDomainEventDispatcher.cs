@@ -1,6 +1,4 @@
-using Dawning.AgentOS.Domain.Core;
-
-namespace Dawning.AgentOS.Application.Abstractions;
+namespace Dawning.AgentOS.Domain.Core;
 
 /// <summary>
 /// Port for dispatching domain events to their registered handlers.

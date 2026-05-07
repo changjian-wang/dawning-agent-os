@@ -1,8 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Api.Tests.Helpers;
-using Dawning.AgentOS.Application.Abstractions.Llm;
-using Dawning.AgentOS.Application.Llm;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

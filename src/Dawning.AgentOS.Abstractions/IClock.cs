@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Abstractions;
+namespace Dawning.AgentOS.Abstractions;
 
 /// <summary>
 /// Provides the current point in time. Use cases that need a clock must take

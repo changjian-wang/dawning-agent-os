@@ -13,7 +13,7 @@ freshness: volatile
 status: active
 archived_reason: ""
 supersedes: []
-related: [pages/adrs/llm-provider-v0-openai-deepseek-abstraction.md]
+related: [pages/adrs/llm-provider-v0-openai-deepseek-abstraction.md, pages/adrs/port-and-cross-layer-contract-assembly-split.md]
 part_of: [pages/hubs/agent-os.md]
 adr_status: accepted
 adr_date: 2026-05-03

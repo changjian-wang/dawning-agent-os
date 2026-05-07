@@ -29,6 +29,7 @@
     -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Core\Dawning.AgentOS.Domain.Core.csproj" />
+        <ProjectReference Include="..\..\src\Dawning.AgentOS.Abstractions\Dawning.AgentOS.Abstractions.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain\Dawning.AgentOS.Domain.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Domain.Services\Dawning.AgentOS.Domain.Services.csproj" />
         <ProjectReference Include="..\..\src\Dawning.AgentOS.Application\Dawning.AgentOS.Application.csproj" />

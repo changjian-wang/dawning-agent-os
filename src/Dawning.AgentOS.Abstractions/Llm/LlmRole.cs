@@ -1,4 +1,4 @@
-namespace Dawning.AgentOS.Application.Llm;
+namespace Dawning.AgentOS.Abstractions.Llm;
 
 /// <summary>
 /// The role of a single message in a chat completion request. Per
