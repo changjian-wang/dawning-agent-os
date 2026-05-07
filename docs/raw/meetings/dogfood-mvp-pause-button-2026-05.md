@@ -1,53 +1,54 @@
-# dogfood: MVP 暂停按钮 (2026-05-07 起)
+## 2026-05-07 第 3 次使用感受（ADR-038 chat-context-memory-injection-v0 上线后）
 
 baseline:
-- git: a3f96cb
+- git: 15a9dca（ADR-038 5 个 commit 全部完成）
 - desktop: 0.0.1
+- session: dogfood 第 2 次使用感受之后约 2 小时，5 commit 落地 + 全测试 436/436 通过
 
-## 2026-05-07 真实使用 1 小时
+### 实验脚本（agent 给的最短可验证脚本）
 
-### 反例
-- **空的新会话不能删除**：误点 `+ 新会话` 3 次后 3 个空 pill 杵着没法清。
-- **chat 内容不进 memory**：在 chat 输入了 3 个真实观点（什么是知识图谱 / 减少 agent 幻觉 / prompt 自动优化），memory 视图 = 0。心智期待：说出来的有价值的就该沉淀。
-- **inbox 在被我当 FAQ 用**：今天捕获的 4 条都是「产品自己是干嘛的」类问题（保存在哪 / 以什么方式 / Capture a thought 是什么 / source 怎么填）。说明 UI 文案不自解释。
-- **source 字段不知道填什么**：填空白比填错更可能，但产品没暗示 source 是干什么的。
+按 4 步跑：
+1. 输入「怎么保存下来比较好？」（设计为命中 ledger 中既有 memory「以什么方式保存下来？」）
+2. 输入「今天天气怎么样？」（设计为 0 命中，验证 F1 静默）
+3. 通过右侧 Capture 输入「我目前在用 .NET 10 + Electron 开发桌面应用 dawning-agent-os」→ 点 Save 晋升 memory
+4. 新会话输入「我用什么技术栈开发桌面应用？」（设计为命中 step 3 刚 Save 的 memory）
 
-### 没用上的
-- 📒 Save：今天 0 次点击。
-- Summarize / Tags：少数几次（具体次数 V0 不落库）。
+### 实测结果
 
-### 暂停瞬间想到
-- 「我刚才聊的这些，下次 chat 还能用吗？」→ 不能（每个 chat session 独立）
-- 「source 留空会怎样？」→ 不知道
+- step 1：✅ 出现 `📒 引用了 1 条 memory`，可展开看到 `019e0145 · 以什么方式保存下来？`
+- step 2：✅ 完全无 memory 小字
+- step 3 误投：把「我目前在用 .NET 10 + Electron 开发桌面应用 dawning-agent-os」打到了 chat 输入框（设计上要进 capture），LLM 答了一通无意义的"用户设置/应用日志/临时缓存"建议
+- step 3 重做：在右侧 Capture 输入同样内容 → Save → 出现 inline 小字 `✓ saved as memory 019e01cd (source=InboxAction, scope=inbox)`
+- step 4：✅✅ `📒 引用了 2 条 memory`；LLM 实际答案 = `您目前使用的技术栈是 .NET 10 + Electron`，**首次出现"LLM 真的从注入的 system prompt 末尾读到事实并据此回答"**——PURPOSE.md MVP 第一信号「Memory 真实复用」首次发生
 
-## 2026-05-07 第 2 次使用感受
+### 用户原话
 
-### 反例
-- **Save 价值不可见**：点 Save 后，"存到 memory 之后有什么作用"完全不知道。
-- **Tags 用途不读自明**：按钮在那但不清楚做什么。
-- **`不知道按哪个 / 怎么填` 累积**：source 字段（信号 3）+ Tags 用途（这次）= 2 次。
+- 第一次试用（step 1 之前）：「我试了下，没看出来有什么实质性的功能变化」——后被 agent 解释为：当时 ledger 只有 1 条 memory，且 chat 提的是知识图谱话题，朴素 bigram 0 命中，符合 F1 静默；但「无声」被误读为「功能没生效」
+- step 4 之后：（验证脚本走完后）符合脚本预期
 
-### 主动倾向
-- 「memory 应该来自用户的输入，自动生成 memory，用户怎么可能知道组织记忆呢？」
-- 「当前这个用起来太复杂了。」
-- 倾向方向：D 零按钮（后端自动）/ B 统一收件箱（chat 自动沉淀），均反对当前显式三按钮模型。
+### 信号 9：朴素 LIKE 检索把"提问"当事实注入
 
-### 元认知（产品能力层，非 UI 主叙事）
-- 「没接入 RAG / ReAct，只能问一句答一句」→ 即使 memory 攒下了也不会被 chat 复用 → Save 没有回报闭环。
+- step 4 命中的 2 条 memory 中，其中一条是 ledger 里既有的「以什么方式保存下来？」——它本身是**未答的提问**，不是事实
+- 命中原因：查询「我用什么技术栈开发桌面应用？」的 bigram 包含「什么」，与那条 memory 共享 `什么` bigram → SQL `LIKE '%什么%'` 命中
+- ADR-038 §A1 朴素关键词不区分「事实 / 提问 / 偏好 / 任务」；最坏情况是注入污染上下文，让 LLM 基于一个未答的问题误推
+- 命中 ADR-038 §`adr_revisit_when` 第 3 条「用户开始抱怨『引用了过时 / 错误的 memory』」的早期形态（暂未抱怨，但事实已发生）
 
-## 信号 9：质疑 Summary/Tags/Save 三按钮的存在意义
+### 信号 10：双输入框心智模型负担延续（ADR-035 dogfood 第 1 天信号 10 的复发）
 
-- Save 不应该存在，应自动保存
-- summary 和 tags 不知道为了哪个未来功能
+- step 3 把"想沉淀的内容"误投到 chat 输入框
+- 用户脑子里没有「左 chat 写想问的 / 右 capture 写想沉淀的」这层切分
+- ADR-035 信号 10 是会话切换器形态，本次信号 10 是**输入框分工**——两条都是 UI 主叙事的边缘事故，但 ADR-038 §决策 D2 + ADR-035 §D4「不动主屏」共同要求新方案不能新增主屏按钮 / 视图
 
-agent 解读（参 ADR-030 §背景 + ADR-031 §背景 + ADR-034）：
-- Summary/Tags 是 ADR-014 四步骤 pipeline 的中间积木，下游消费（classify / curation options / 兴趣画像 ADR-013）都未建
-- Save 把 inbox 项晋升为 memory，但 chat 不读 memory（路径 β 要补的根因），所以晋升后无回报
-- 我判断 Save 该不该存在，要在路径 β 闭环建起来后用数据回答，不是现在
+### 信号 11：Save 反馈闭环已部分修复（确认型，非新需求）
 
-## 信号 10：会话切换器形态质疑（UI 收敛素材，非 ADR-038 范围）
+- 点 Save 后，inbox item 上出现 `Saved ✓ — save again` 状态切换
+- 同步出现一行 inline 反馈：`✓ saved as memory 019e01cd (source=InboxAction, scope=inbox)`
+- 这条反馈不在 ADR-038 范围内，应该是更早的某次提交带的（待查 git log）；但它**部分修复**了 dogfood 第 2 天信号 4「Save 没回报闭环」
+- 仍未解决的部分：用户看不到「这条 memory 下次会被哪些 chat 召回」——可考虑用 `ChatMemoryRetriever.Tokenize` 抽 3 个关键词作为预览，但要先评估是否暴露内部实现细节
 
-- 当前顶部 pill tab → 倾向左侧 drawer
-- 与原生 chat 产品（Claude/ChatGPT/Cursor）形态一致
-- 配合信号 1（空会话删不掉），drawer hover 删除是自然解
-- 留待 ADR-035 收敛 ADR 中处理
+### 元认知
+
+- ADR-038 5-commit MVP 端到端打通，PURPOSE.md MVP 第一信号「Memory 真实复用」首次出现
+- 但首次成功也立刻暴露了 3 条新信号；这与 ADR-035 的 dogfood 节奏一致（ADR-035 上线第 1 天就出 9~11 条信号）
+- 下一个 ADR 候选（plan-first，未起草）：信号 9 → memory kind 过滤；信号 10 → chat 内沉淀入口；信号 11 → Save 反馈带关键词预览
+- 信号 9 优先级最高（污染 LLM 上下文，跟检索质量直接挂钩）

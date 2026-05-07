@@ -77,6 +77,7 @@ part_of: []
 - [ADR-036 持久化仓储风格统一：Infrastructure Repository 采用 Dawning.ORM.Dapper](../adrs/persistence-repository-style-dawning-orm-dapper.md)
 - [ADR-037 端口与跨层契约程序集划分：Domain Event 进 Domain.Core，其余技术契约进 Dawning.AgentOS.Abstractions](../adrs/port-and-cross-layer-contract-assembly-split.md)
 - [ADR-038 chat 上下文注入 memory MVP：朴素关键词检索 + system prompt 末尾注入 + 一行小字回报](../adrs/chat-context-memory-injection-v0.md)
+- [ADR-039 chat memory injection 加问句过滤 v0：retrieval-side 后过滤 + 结尾问号判定 + 可接受截断](../adrs/chat-memory-injection-question-filter-v0.md)
 
 已落地规则：
 
