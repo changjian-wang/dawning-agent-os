@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dawning.AgentOS.Abstractions;
 using Dawning.AgentOS.Abstractions.Llm;
 using Dawning.AgentOS.Api.Tests.Helpers;
+using Dawning.AgentOS.Domain.Memory;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -260,6 +262,124 @@ public sealed class ChatEndpointsTests
     }
 
     [Test]
+    public async Task PostMessage_EmitsMemoryAnnotationFrame_BeforeFirstChunk_WhenMemoriesCited()
+    {
+        // Seed two active memory entries that the orchestrator's
+        // keyword search will hit. ChatMemoryRetriever's tokenizer
+        // emits CJK 2-grams, so the user message "我喜欢苹果" produces
+        // bigrams "我喜", "喜欢", "欢苹", "苹果" — both seeded entries
+        // contain "苹果" and will match.
+        var memory1 = await SeedMemoryAsync("我喜欢吃苹果");
+        // Long entry to verify the renderer-side preview truncation
+        // ships through the SSE payload — the orchestrator clamps the
+        // contentPreview at 80 chars and adds the ellipsis (ADR-038
+        // §决策 D2). We anchor the entry with "苹果" so the keyword
+        // search hits the same SQL row.
+        var memory2 = await SeedMemoryAsync("苹果" + new string('啊', 200));
+
+        _llm.Setup(p =>
+                p.CompleteStreamAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>())
+            )
+            .Returns(
+                BuildStream(
+                    LlmStreamChunk.ForDelta("ok"),
+                    LlmStreamChunk.ForDone(
+                        model: "gpt-4.1-test",
+                        promptTokens: 10,
+                        completionTokens: 1,
+                        latency: TimeSpan.FromMilliseconds(50)
+                    )
+                )
+            );
+
+        using var client = CreateAuthorizedClient();
+        var sessionId = await CreateSessionAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            new Uri($"/api/chat/sessions/{sessionId}/messages", UriKind.Relative),
+            new { content = "我喜欢苹果" }
+        );
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(
+            response.Content.Headers.ContentType?.MediaType,
+            Is.EqualTo("text/event-stream")
+        );
+
+        var body = await response.Content.ReadAsStringAsync();
+        var memoryFrameIndex = body.IndexOf("event: memoryAnnotation", StringComparison.Ordinal);
+        var firstChunkFrameIndex = body.IndexOf("event: chunk", StringComparison.Ordinal);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                memoryFrameIndex,
+                Is.GreaterThanOrEqualTo(0),
+                "ADR-038 §决策 D2 requires a memoryAnnotation event when memories are cited."
+            );
+            Assert.That(
+                firstChunkFrameIndex,
+                Is.GreaterThan(memoryFrameIndex),
+                "ADR-038 §决策 D2 requires the memoryAnnotation event BEFORE the first chunk."
+            );
+            Assert.That(body, Does.Contain("\"contentPreview\":"));
+            Assert.That(
+                body,
+                Does.Contain($"\"id\":\"{memory1.Id}\""),
+                "First seeded memory's GUID must appear in the SSE payload."
+            );
+            Assert.That(
+                body,
+                Does.Contain($"\"id\":\"{memory2.Id}\""),
+                "Second seeded memory's GUID must appear in the SSE payload."
+            );
+        });
+    }
+
+    [Test]
+    public async Task PostMessage_DoesNotEmitMemoryAnnotationFrame_WhenNoMemoriesCited()
+    {
+        // No memories seeded ⇒ retriever returns empty ⇒ orchestrator
+        // skips the chunk ⇒ API never writes a memoryAnnotation frame.
+        _llm.Setup(p =>
+                p.CompleteStreamAsync(It.IsAny<LlmRequest>(), It.IsAny<CancellationToken>())
+            )
+            .Returns(
+                BuildStream(
+                    LlmStreamChunk.ForDelta("hi"),
+                    LlmStreamChunk.ForDone(
+                        model: "gpt-4.1-test",
+                        promptTokens: 1,
+                        completionTokens: 1,
+                        latency: TimeSpan.FromMilliseconds(10)
+                    )
+                )
+            );
+
+        using var client = CreateAuthorizedClient();
+        var sessionId = await CreateSessionAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            new Uri($"/api/chat/sessions/{sessionId}/messages", UriKind.Relative),
+            new { content = "hello" }
+        );
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                body,
+                Does.Not.Contain("event: memoryAnnotation"),
+                "Empty memory list ⇒ no memoryAnnotation frame per ADR-038 §决策 D2."
+            );
+            Assert.That(body, Does.Contain("event: chunk"));
+            Assert.That(body, Does.Contain("event: done"));
+        });
+    }
+
+    [Test]
     public async Task PostMessage_EmitsErrorFrame_AndDoesNotPersistAssistant_OnLlmError()
     {
         var domainError = LlmErrors.UpstreamUnavailable("503 from upstream");
@@ -365,6 +485,32 @@ public sealed class ChatEndpointsTests
         var payload = await response.Content.ReadFromJsonAsync<CreateSessionPayload>();
         Assert.That(payload, Is.Not.Null);
         return payload!.Session.Id;
+    }
+
+    /// <summary>
+    /// Seeds an active <see cref="MemoryLedgerEntry"/> through the live
+    /// repository so the in-process <c>ChatMemoryRetriever</c> picks it
+    /// up via the keyword <c>LIKE</c> search. Used by the
+    /// <c>memoryAnnotation</c> SSE tests to exercise the full pipeline
+    /// end-to-end without bypassing the orchestrator.
+    /// </summary>
+    private async Task<MemoryLedgerEntry> SeedMemoryAsync(string content)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var repository =
+            scope.ServiceProvider.GetRequiredService<IMemoryLedgerRepository>();
+        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+        var entry = MemoryLedgerEntry.Create(
+            content: content,
+            scope: null,
+            source: MemorySource.UserExplicit,
+            isExplicit: true,
+            confidence: 1.0,
+            sensitivity: MemorySensitivity.Normal,
+            createdAtUtc: clock.UtcNow
+        );
+        await repository.AddAsync(entry, CancellationToken.None);
+        return entry;
     }
 
 #pragma warning disable CS1998 // async iterator without awaits — intentional, we are mocking a stream

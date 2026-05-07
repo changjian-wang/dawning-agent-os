@@ -38,7 +38,10 @@ namespace Dawning.AgentOS.Api.Endpoints.Chat;
 ///     <description>
 ///       <c>POST /api/chat/sessions/{id:guid}/messages</c> — send a new
 ///       user turn; the response is an SSE stream of <c>chunk</c> /
-///       <c>done</c> / <c>error</c> events per ADR-032 §决策 H1.
+///       <c>done</c> / <c>error</c> events per ADR-032 §决策 H1, plus
+///       an optional leading <c>memoryAnnotation</c> event per ADR-038
+///       §决策 D2 when the orchestrator cited at least one long-term
+///       memory entry.
 ///     </description>
 ///   </item>
 /// </list>
@@ -277,6 +280,7 @@ public static class ChatEndpoints
     ///   <item><description><c>Delta</c> → <c>event: chunk</c> + <c>data: {"delta":"..."}</c></description></item>
     ///   <item><description><c>Done</c>  → <c>event: done</c>  + <c>data: {"model":"...","promptTokens":N,"completionTokens":N,"durationMs":N}</c></description></item>
     ///   <item><description><c>Error</c> → <c>event: error</c> + <c>data: {"code":"...","message":"..."}</c></description></item>
+    ///   <item><description><c>MemoryAnnotation</c> → <c>event: memoryAnnotation</c> + <c>data: {"items":[{"id":"...","contentPreview":"..."}]}</c> per ADR-038 §决策 D2; emitted at most once per stream and always BEFORE the first <c>chunk</c> frame.</description></item>
     /// </list>
     /// </summary>
     /// <remarks>
@@ -350,6 +354,37 @@ public static class ChatEndpoints
                         .ConfigureAwait(false);
                     break;
 
+                case LlmStreamChunkKind.MemoryAnnotation:
+                    // Per ADR-038 §决策 D2 the orchestrator never emits a
+                    // MemoryAnnotation chunk with an empty list, but we
+                    // still defend against future contract drift by
+                    // suppressing such a frame at the wire so the
+                    // renderer does not have to special-case empty
+                    // annotations.
+                    var annotations = chunk.MemoryAnnotations;
+                    if (annotations is null || annotations.Count == 0)
+                    {
+                        break;
+                    }
+
+                    var sseItems = new ChatSseMemoryAnnotationItem[annotations.Count];
+                    for (var i = 0; i < annotations.Count; i++)
+                    {
+                        sseItems[i] = new ChatSseMemoryAnnotationItem(
+                            Id: annotations[i].Id,
+                            ContentPreview: annotations[i].ContentPreview
+                        );
+                    }
+
+                    await WriteSseFrameAsync(
+                            response,
+                            eventName: "memoryAnnotation",
+                            payload: new ChatSseMemoryAnnotationData(sseItems),
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
+                    break;
+
                 default:
                     // Unknown kinds are forwarded verbatim as a chunk
                     // event with the raw delta, if any. This keeps the
@@ -403,6 +438,32 @@ public static class ChatEndpoints
     /// <param name="Code">The stable machine-readable error code.</param>
     /// <param name="Message">Human-readable error detail.</param>
     private sealed record ChatSseErrorData(string Code, string Message);
+
+    /// <summary>
+    /// SSE <c>memoryAnnotation</c> data payload per ADR-038 §决策 D2.
+    /// Carries the non-empty list of memory entries the orchestrator
+    /// injected into the system prompt for the current chat turn.
+    /// </summary>
+    /// <param name="Items">
+    /// Non-empty array of cited memory entries; the renderer uses the
+    /// length to drive the muted "使用了 N 条记忆" hint and the entries
+    /// to populate the expandable details panel.
+    /// </param>
+    private sealed record ChatSseMemoryAnnotationData(
+        IReadOnlyList<ChatSseMemoryAnnotationItem> Items
+    );
+
+    /// <summary>
+    /// One entry inside <see cref="ChatSseMemoryAnnotationData"/>.
+    /// </summary>
+    /// <param name="Id">Full GUID of the underlying memory ledger entry.</param>
+    /// <param name="ContentPreview">
+    /// Per ADR-038 §决策 D2 the first 80 characters of the entry's
+    /// content, suffixed with "…" when truncated. Built by the
+    /// orchestrator (<c>ChatAppService.BuildAnnotations</c>); the API
+    /// layer ships it verbatim.
+    /// </param>
+    private sealed record ChatSseMemoryAnnotationItem(Guid Id, string ContentPreview);
 
     /// <summary>RFC 7807 ProblemDetails extension entry mirroring <see cref="DomainError"/>.</summary>
     /// <param name="Code">The stable machine-readable error code.</param>
