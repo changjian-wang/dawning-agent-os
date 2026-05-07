@@ -1,69 +1,47 @@
 using System.Globalization;
-using Dapper;
 using Dawning.AgentOS.Application.Abstractions.Persistence;
 using Dawning.AgentOS.Domain.Memory;
+using Dawning.ORM.Dapper;
+using static Dawning.ORM.Dapper.SqlMapperExtensions;
 
 namespace Dawning.AgentOS.Infrastructure.Persistence.Memory;
 
 /// <summary>
-/// V0 Dapper-based implementation of <see cref="IMemoryLedgerRepository"/>.
+/// Infrastructure implementation of <see cref="IMemoryLedgerRepository"/>
+/// using <c>Dawning.ORM.Dapper</c>. Per ADR-036 this repository follows
+/// the same style as <see cref="Inbox.InboxRepository"/> and
+/// <see cref="Chat.ChatSessionRepository"/>: PO persistence entity +
+/// attribute mapping + aggregate rehydrate on read.
+/// </summary>
+/// <remarks>
+/// <para>
 /// Per ADR-033 §决策 L1 each operation opens a fresh ADO.NET connection
 /// through <see cref="IDbConnectionFactory"/> and disposes it via
 /// <c>await using</c>; the factory is scoped, the repository scoped
 /// accordingly.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Per ADR-024 §F1 / §G1 Dapper appears strictly inside Infrastructure.
-/// All timestamps round-trip as ISO-8601 strings through the
-/// <c>"O"</c> format specifier — the same format used by
-/// <see cref="Inbox.InboxRepository"/> and <c>ChatSessionRepository</c>.
 /// </para>
 /// <para>
+/// All timestamps round-trip as ISO-8601 strings through the <c>"O"</c>
+/// format specifier — same convention as the other V0 repositories.
 /// <see cref="MemoryLedgerEntry"/> rehydration uses
-/// <see cref="MemoryLedgerEntry.Rehydrate"/> so no domain events fire
-/// on load. Per ADR-033 §决策 G1 the soft-delete row is preserved
-/// indefinitely; the default list / count paths exclude it via
-/// <c>status &lt;&gt; 4</c>.
+/// <see cref="MemoryLedgerEntry.Rehydrate"/> so no domain events fire on
+/// load. Per ADR-033 §决策 G1 the soft-delete row is preserved
+/// indefinitely; the default list / count paths exclude it via the
+/// <see cref="MemoryStatus.SoftDeleted"/> filter.
+/// </para>
+/// <para>
+/// Per ADR-033 §决策 I1 the update path overwrites only mutable columns
+/// (<c>content</c>, <c>scope</c>, <c>sensitivity</c>, <c>status</c>,
+/// <c>updated_at_utc</c>, <c>deleted_at_utc</c>). Immutable columns
+/// (<c>source</c>, <c>is_explicit</c>, <c>confidence</c>,
+/// <c>created_at_utc</c>) carry <see cref="IgnoreUpdateAttribute"/> on
+/// <see cref="MemoryEntryEntity"/> so the generated UPDATE skips them.
 /// </para>
 /// </remarks>
 public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactory)
     : IMemoryLedgerRepository
 {
     private const string IsoRoundTripFormat = "O";
-
-    private const string SelectColumns =
-        "id, content, scope, source, is_explicit, confidence, sensitivity, status, "
-        + "created_at_utc, updated_at_utc, deleted_at_utc";
-
-    private const string InsertSql =
-        "INSERT INTO memory_entries "
-        + "(id, content, scope, source, is_explicit, confidence, sensitivity, status, "
-        + "created_at_utc, updated_at_utc, deleted_at_utc) "
-        + "VALUES (@id, @content, @scope, @source, @isExplicit, @confidence, @sensitivity, @status, "
-        + "@createdAtUtc, @updatedAtUtc, @deletedAtUtc)";
-
-    private const string GetByIdSql =
-        "SELECT " + SelectColumns + " FROM memory_entries WHERE id = @id LIMIT 1";
-
-    // The list / count statements interpolate the WHERE clause from a
-    // small set of constants, never from caller input — see
-    // BuildFilterClause / OrderClause below.
-    private const string OrderClause =
-        " ORDER BY updated_at_utc DESC, id DESC LIMIT @limit OFFSET @offset";
-
-    // Per ADR-033 §决策 I1 the update overwrites only mutable columns;
-    // source / created_at_utc / is_explicit / confidence are immutable
-    // on the aggregate so the SQL deliberately omits them.
-    private const string UpdateSql =
-        "UPDATE memory_entries SET "
-        + "content = @content, "
-        + "scope = @scope, "
-        + "sensitivity = @sensitivity, "
-        + "status = @status, "
-        + "updated_at_utc = @updatedAtUtc, "
-        + "deleted_at_utc = @deletedAtUtc "
-        + "WHERE id = @id";
 
     private readonly IDbConnectionFactory _connectionFactory =
         connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
@@ -77,26 +55,8 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var parameters = new
-        {
-            id = entry.Id.ToString(),
-            content = entry.Content,
-            scope = entry.Scope,
-            source = (int)entry.Source,
-            isExplicit = entry.IsExplicit ? 1 : 0,
-            confidence = entry.Confidence,
-            sensitivity = (int)entry.Sensitivity,
-            status = (int)entry.Status,
-            createdAtUtc = FormatTimestamp(entry.CreatedAt),
-            updatedAtUtc = FormatTimestamp(entry.UpdatedAtUtc),
-            deletedAtUtc = entry.DeletedAtUtc is { } d ? FormatTimestamp(d) : null,
-        };
-
-        await connection
-            .ExecuteAsync(
-                new CommandDefinition(InsertSql, parameters, cancellationToken: cancellationToken)
-            )
-            .ConfigureAwait(false);
+        var entity = ToEntity(entry);
+        _ = await connection.InsertAsync(entity).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -106,17 +66,20 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var row = await connection
-            .QuerySingleOrDefaultAsync<MemoryEntryRow>(
-                new CommandDefinition(
-                    GetByIdSql,
-                    new { id = id.ToString() },
-                    cancellationToken: cancellationToken
-                )
-            )
+        // Use the QueryBuilder predicate path rather than connection.GetAsync<T>(id):
+        // GetAsync routes the row through a dynamic-typed callsite which the runtime
+        // binder fails to convert back to T (see Dawning.ORM.Dapper 1.3.0). The
+        // builder path is statically typed end-to-end and is mandated by the
+        // persistence-repository-conventions rule regardless of the upstream fix
+        // in 1.3.1.
+        var idValue = id.ToString();
+        var entity = await connection
+            .Builder<MemoryEntryEntity>()
+            .Where(x => x.Id == idValue)
+            .FirstOrDefaultAsync()
             .ConfigureAwait(false);
 
-        return row is null ? null : MapRow(row);
+        return entity is null ? null : MapEntity(entity);
     }
 
     /// <inheritdoc />
@@ -131,24 +94,12 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var parameters = new
-        {
-            id = entry.Id.ToString(),
-            content = entry.Content,
-            scope = entry.Scope,
-            sensitivity = (int)entry.Sensitivity,
-            status = (int)entry.Status,
-            updatedAtUtc = FormatTimestamp(entry.UpdatedAtUtc),
-            deletedAtUtc = entry.DeletedAtUtc is { } d ? FormatTimestamp(d) : null,
-        };
-
-        var rows = await connection
-            .ExecuteAsync(
-                new CommandDefinition(UpdateSql, parameters, cancellationToken: cancellationToken)
-            )
-            .ConfigureAwait(false);
-
-        return rows > 0;
+        // Source / IsExplicit / Confidence / CreatedAtUtc carry [IgnoreUpdate]
+        // on the entity so the generated UPDATE skips them — matching the prior
+        // hand-written SQL that deliberately omitted those immutable columns
+        // per ADR-033 §决策 I1.
+        var entity = ToEntity(entry);
+        return await connection.UpdateAsync(entity).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -164,25 +115,22 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var (whereClause, parameters) = BuildFilterClause(
-            statusFilter,
-            includeSoftDeleted,
-            limit,
-            offset
-        );
-
-        var sql = "SELECT " + SelectColumns + " FROM memory_entries" + whereClause + OrderClause;
-
-        var rows = await connection
-            .QueryAsync<MemoryEntryRow>(
-                new CommandDefinition(sql, parameters, cancellationToken: cancellationToken)
+        var entities = await ApplyFilter(
+                connection.Builder<MemoryEntryEntity>(),
+                statusFilter,
+                includeSoftDeleted
             )
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .ThenByDescending(x => x.Id)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync()
             .ConfigureAwait(false);
 
-        var items = new List<MemoryLedgerEntry>();
-        foreach (var row in rows)
+        var items = new List<MemoryLedgerEntry>(entities.Count);
+        foreach (var entity in entities)
         {
-            items.Add(MapRow(row));
+            items.Add(MapEntity(entity));
         }
         return items;
     }
@@ -194,64 +142,87 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
         CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var connection = await _connectionFactory
             .OpenAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var (whereClause, parameters) = BuildFilterClause(
-            statusFilter,
-            includeSoftDeleted,
-            limit: null,
-            offset: null
-        );
-
-        var sql = "SELECT COUNT(*) FROM memory_entries" + whereClause;
-
-        return await connection
-            .ExecuteScalarAsync<long>(
-                new CommandDefinition(sql, parameters, cancellationToken: cancellationToken)
+        return await ApplyFilter(
+                connection.Builder<MemoryEntryEntity>(),
+                statusFilter,
+                includeSoftDeleted
             )
+            .CountAsync()
             .ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Builds the WHERE clause + bound parameters used by both
-    /// <see cref="ListAsync"/> and <see cref="CountAsync"/>. The clause
-    /// is composed from a small fixed set of fragments so caller input
-    /// never reaches the SQL string verbatim — only the
-    /// <c>@status</c> / <c>@limit</c> / <c>@offset</c> bound parameters
-    /// carry user data.
+    /// Composes the WHERE chain shared by <see cref="ListAsync"/> and
+    /// <see cref="CountAsync"/>. The two filter modes are mutually
+    /// exclusive — a non-null <paramref name="statusFilter"/> wins; only
+    /// when no explicit filter is given does <paramref name="includeSoftDeleted"/>
+    /// gate the soft-delete exclusion.
     /// </summary>
-    private static (string Clause, DynamicParameters Parameters) BuildFilterClause(
+    private static QueryBuilder<MemoryEntryEntity> ApplyFilter(
+        QueryBuilder<MemoryEntryEntity> builder,
         MemoryStatus? statusFilter,
-        bool includeSoftDeleted,
-        int? limit,
-        int? offset
+        bool includeSoftDeleted
     )
     {
-        var parameters = new DynamicParameters();
-        if (limit is { } l)
-        {
-            parameters.Add("limit", l);
-        }
-        if (offset is { } o)
-        {
-            parameters.Add("offset", o);
-        }
-
         if (statusFilter is { } status)
         {
-            parameters.Add("status", (int)status);
-            return (" WHERE status = @status", parameters);
+            var statusValue = (int)status;
+            return builder.Where(x => x.Status == statusValue);
         }
 
         if (!includeSoftDeleted)
         {
-            parameters.Add("excludedStatus", (int)MemoryStatus.SoftDeleted);
-            return (" WHERE status <> @excludedStatus", parameters);
+            const int softDeleted = (int)MemoryStatus.SoftDeleted;
+            return builder.Where(x => x.Status != softDeleted);
         }
 
-        return (string.Empty, parameters);
+        return builder;
+    }
+
+    private static MemoryEntryEntity ToEntity(MemoryLedgerEntry entry) =>
+        new()
+        {
+            Id = entry.Id.ToString(),
+            Content = entry.Content,
+            Scope = entry.Scope,
+            Source = (int)entry.Source,
+            IsExplicit = entry.IsExplicit ? 1 : 0,
+            Confidence = entry.Confidence,
+            Sensitivity = (int)entry.Sensitivity,
+            Status = (int)entry.Status,
+            CreatedAtUtc = FormatTimestamp(entry.CreatedAt),
+            UpdatedAtUtc = FormatTimestamp(entry.UpdatedAtUtc),
+            DeletedAtUtc = entry.DeletedAtUtc is { } d ? FormatTimestamp(d) : null,
+        };
+
+    private static MemoryLedgerEntry MapEntity(MemoryEntryEntity entity)
+    {
+        var id = Guid.Parse(entity.Id, CultureInfo.InvariantCulture);
+        var createdAt = ParseTimestamp(entity.CreatedAtUtc);
+        var updatedAt = ParseTimestamp(entity.UpdatedAtUtc);
+        var deletedAt = entity.DeletedAtUtc is null
+            ? (DateTimeOffset?)null
+            : ParseTimestamp(entity.DeletedAtUtc);
+
+        return MemoryLedgerEntry.Rehydrate(
+            id: id,
+            content: entity.Content,
+            scope: entity.Scope,
+            source: (MemorySource)entity.Source,
+            isExplicit: entity.IsExplicit != 0,
+            confidence: entity.Confidence,
+            sensitivity: (MemorySensitivity)entity.Sensitivity,
+            status: (MemoryStatus)entity.Status,
+            createdAtUtc: createdAt,
+            updatedAtUtc: updatedAt,
+            deletedAtUtc: deletedAt
+        );
     }
 
     private static string FormatTimestamp(DateTimeOffset value) =>
@@ -263,49 +234,4 @@ public sealed class MemoryLedgerRepository(IDbConnectionFactory connectionFactor
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
         );
-
-    private static MemoryLedgerEntry MapRow(MemoryEntryRow row)
-    {
-        var id = Guid.Parse(row.Id, CultureInfo.InvariantCulture);
-        var createdAt = ParseTimestamp(row.CreatedAtUtc);
-        var updatedAt = ParseTimestamp(row.UpdatedAtUtc);
-        var deletedAt = row.DeletedAtUtc is null
-            ? (DateTimeOffset?)null
-            : ParseTimestamp(row.DeletedAtUtc);
-
-        return MemoryLedgerEntry.Rehydrate(
-            id: id,
-            content: row.Content,
-            scope: row.Scope,
-            source: (MemorySource)row.Source,
-            isExplicit: row.IsExplicit != 0,
-            confidence: row.Confidence,
-            sensitivity: (MemorySensitivity)row.Sensitivity,
-            status: (MemoryStatus)row.Status,
-            createdAtUtc: createdAt,
-            updatedAtUtc: updatedAt,
-            deletedAtUtc: deletedAt
-        );
-    }
-
-    /// <summary>
-    /// Dapper materialization shape; column names are snake_case per
-    /// the migration, mapped through the <c>matchNamesWithUnderscores</c>
-    /// option that <see cref="DependencyInjection.InfrastructureServiceCollectionExtensions"/>
-    /// turns on at startup.
-    /// </summary>
-    private sealed class MemoryEntryRow
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
-        public string Scope { get; set; } = string.Empty;
-        public int Source { get; set; }
-        public int IsExplicit { get; set; }
-        public double Confidence { get; set; }
-        public int Sensitivity { get; set; }
-        public int Status { get; set; }
-        public string CreatedAtUtc { get; set; } = string.Empty;
-        public string UpdatedAtUtc { get; set; } = string.Empty;
-        public string? DeletedAtUtc { get; set; }
-    }
 }
